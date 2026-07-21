@@ -19,13 +19,15 @@
         :root { --primary: #0f172a; --accent: #0ea5e9; --bg: #f8fafc; --card-bg: #ffffff; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1e293b; }
         
-        .header { text-align: center; margin-bottom: 30px; position: relative; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; display: flex; flex-direction: column; align-items: center; }
-        .header h1 { margin: 0; color: var(--primary); font-size: 28px; letter-spacing: -0.5px; }
-        .header span { color: #64748b; font-style: italic; font-size: 13px; }
-        
-        .header-right { position: absolute; right: 0; top: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: 320px; }
-        .header-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-        .header-actions button { font-size: 12px; padding: 8px 12px; }
+        .header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 15px; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
+        .header-spacer { grid-column: 1; min-width: 0; }
+        .header-title { text-align: center; grid-column: 2; }
+        .header-title h1 { margin: 0; color: var(--primary); font-size: 26px; letter-spacing: -0.5px; }
+        .header-title span { color: #64748b; font-style: italic; font-size: 13px; }
+
+        .header-right { grid-column: 3; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 0; }
+        .header-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
+        .header-actions button { font-size: 11px; padding: 8px 9px; white-space: nowrap; }
         
         .controls { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; background: white; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; }
         .control-group { display: flex; flex-direction: column; flex: 1; min-width: 200px; }
@@ -125,9 +127,12 @@
 
         @media (max-width: 768px) {
             body { padding: 10px; }
-            .header h1 { font-size: 22px; }
-            .header-right { position: relative; top: auto; right: auto; align-items: center; margin-top: 15px; width: 100%; }
-            .header-actions { flex-direction: row; flex-wrap: wrap; width: 100%; justify-content: center; }
+            .header { grid-template-columns: 1fr; }
+            .header-spacer { display: none; }
+            .header-title { grid-column: 1; }
+            .header-title h1 { font-size: 22px; }
+            .header-right { grid-column: 1; justify-self: center; align-items: center; margin-top: 15px; width: 100%; }
+            .header-actions { flex-wrap: wrap; width: 100%; justify-content: center; }
             .header-actions button { flex: 1; font-size: 12px; padding: 10px; min-width: 140px;}
             .controls { flex-direction: column; gap: 10px; padding: 12px;}
             .control-group { min-width: 100%; }
@@ -158,15 +163,18 @@
 
 <div id="appRoot" style="display:none;">
 <header class="header">
-    <h1>Onur Mermer Sevkiyat Takip</h1>
-    <span>by Hüseyin ÇİLENTİ</span>
+    <div class="header-spacer" aria-hidden="true"></div>
+    <div class="header-title">
+        <h1>Onur Mermer Sevkiyat Takip</h1>
+        <span>by Hüseyin ÇİLENTİ</span>
+    </div>
 
     <div class="header-right">
         <div class="header-actions">
             <button class="btn-sync" onclick="fetchData(false)">🔄 Yenile</button>
-            <button class="btn-sync" onclick="exportToExcel()">📊 Excel'e Aktar</button>
-            <button class="btn-ship" onclick="openShipModal()">🛳️ Gemi Programları</button>
-            <button class="btn-add" onclick="openModal()">+ Yeni Sevkiyat Ekle</button>
+            <button class="btn-sync" onclick="exportToExcel()">📊 Excel</button>
+            <button class="btn-ship" onclick="openShipModal()">🛳️ Gemiler</button>
+            <button class="btn-add" onclick="openModal()">+ Sevkiyat</button>
         </div>
         <div id="syncStatusIndicator" role="status" aria-live="polite" style="font-size: 12px; font-weight: bold; color: #64748b;">⏳ Bağlanıyor...</div>
     </div>
