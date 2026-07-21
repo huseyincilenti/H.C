@@ -163,6 +163,7 @@
     <div class="header-right">
         <div class="header-actions">
             <button class="btn-sync" onclick="fetchData(false)">🔄 Yenile</button>
+            <button class="btn-sync" onclick="exportToExcel()">📊 Excel'e Aktar</button>
             <button class="btn-ship" onclick="openShipModal()">🛳️ Gemi Programları</button>
             <button class="btn-add" onclick="openModal()">+ Yeni Sevkiyat Ekle</button>
         </div>
@@ -372,6 +373,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
     // --------------------------------------------------------
     // KENDİ SUPABASE PROJE URL VE ANON KEY'İNİ BURAYA YAPIŞTIR
@@ -613,6 +615,69 @@
             setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = '0.3s'; setTimeout(()=>toast.remove(), 4000); }, 4000);
             window.open('https://www.msc.com/en/track-a-shipment', '_blank');
         });
+    }
+
+    function exportToExcel() {
+        if (!allData.length && !allShips.length && !allTodos.length) {
+            alert("Aktarılacak veri bulunamadı.");
+            return;
+        }
+
+        const sevkiyatRows = allData.map(d => {
+            let pList = [];
+            try { pList = JSON.parse(d.urun); if (!Array.isArray(pList)) throw 'e'; } catch (e) { pList = []; }
+            const urunlerText = pList.map(p => `${p.cins || ''}${p.olcu ? ' - ' + p.olcu : ''}${p.fiyat ? ' ($' + p.fiyat + ')' : ''}`).filter(Boolean).join('; ');
+
+            let pNotes = [];
+            try { pNotes = JSON.parse(d.notlar); if (!Array.isArray(pNotes)) throw 'e'; } catch (e) { pNotes = []; }
+            const notlarText = pNotes.map(n => `${n.tarih || ''}: ${n.metin || ''}`).join(' | ');
+
+            const konteynerlerText = (d.konteynerler || []).map(k => `${k.no || ''}${k.seal ? ' (Mühür: ' + k.seal + ')' : ''}${k.weight ? ' ' + k.weight + 'kg' : ''}`).filter(Boolean).join('; ');
+
+            return {
+                'Müşteri': d.musteri || '',
+                'PO No': d.siparisNo || '',
+                'Booking No': d.bookingNo || '',
+                'Teslim Şekli': d.teslimat || '',
+                'Dolum Yeri': d.dolum || '',
+                'Liman': d.liman || '',
+                'Varış Limanı': d.ulke || '',
+                'Aşama': d.asama || '',
+                'Plaka': d.plaka || '',
+                'Üretim Bitiş Tarihi': d.uretimTarihi || '',
+                'Gemi': (d.gemi && d.gemi.ad) || '',
+                'Ürünler': urunlerText,
+                'Konteynerler': konteynerlerText,
+                'Notlar': notlarText,
+                'Evrak Durumu': `${(d.evraklar || []).length} / ${allEvraklarDef.length}`,
+                'Klasör Yolu': d.klasor || '',
+                'Sabitlendi': d.isPinned ? 'Evet' : 'Hayır'
+            };
+        });
+
+        const gemiRows = allShips.map(s => ({
+            'Gemi Adı': s.ad || '',
+            'Liman': s.liman || '',
+            'İlk Giriş': s.ilk || '',
+            'Cut-Off': s.cut || '',
+            'VGM': s.vgm || '',
+            'ETD': s.etd || '',
+            'ETA': s.eta || ''
+        }));
+
+        const gorevRows = allTodos.map(t => ({
+            'Görev / Not': t.text || '',
+            'Tarih': t.date || '',
+            'Tamamlandı': t.isDone ? 'Evet' : 'Hayır'
+        }));
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sevkiyatRows), 'Sevkiyatlar');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gemiRows), 'Gemiler');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gorevRows), 'Görevler');
+
+        const tarihDamgasi = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(wb, `Onur_Mermer_Sevkiyat_${tarihDamgasi}.xlsx`);
     }
 
     function formatDateStr(dateStr, includeTime = false) {
