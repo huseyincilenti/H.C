@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onur Mermer - Sevkiyat & Operasyon Yönetimi</title>
+    
+    <link rel="icon" href="https://www.onurmarble.com/favicon.ico" type="image/x-icon">
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sevkiyat Takip">
+
+    <style>
+        :root { --primary: #0f172a; --accent: #0ea5e9; --bg: #f8fafc; --card-bg: #ffffff; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1e293b; }
+        
+        .header { text-align: center; margin-bottom: 30px; position: relative; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; display: flex; flex-direction: column; align-items: center; }
+        .header h1 { margin: 0; color: var(--primary); font-size: 28px; letter-spacing: -0.5px; }
+        .header span { color: #64748b; font-style: italic; font-size: 13px; }
+        
+        .header-right { position: absolute; right: 0; top: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+        .header-actions { display: flex; gap: 10px; }
+        
+        .controls { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; background: white; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .control-group { display: flex; flex-direction: column; flex: 1; min-width: 200px; }
+        .control-group label { font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #64748b; text-transform: uppercase; }
+        
+        .todo-section { background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); }
+        .todo-header { font-size: 16px; font-weight: bold; color: #0f172a; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .todo-input-group { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap;}
+        .todo-input-group input[type="text"] { flex: 2; min-width: 200px; }
+        .todo-input-group input[type="datetime-local"] { flex: 1; min-width: 150px; }
+        .todo-input-group button { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap;}
+        .todo-input-group button:hover { background: #059669; }
+        .todo-list { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding-right: 5px; }
+        .todo-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; transition: 0.2s; gap: 10px;}
+        .todo-item:hover { background: #f1f5f9; border-color: #cbd5e1; }
+        .todo-item.done { opacity: 0.6; background: #f1f5f9; }
+        .todo-item.done .todo-text { text-decoration: line-through; color: #94a3b8; }
+        .todo-text { flex: 1; font-size: 13px; font-weight: 600; color: #334155; word-break: break-word;}
+        .todo-date { font-size: 11px; color: #ea580c; background: #ffedd5; padding: 4px 8px; border-radius: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; white-space: nowrap;}
+        .todo-item.done .todo-date { background: #e2e8f0; color: #64748b; }
+        .todo-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: #10b981; flex-shrink: 0;}
+        .todo-del { background: none; border: none; color: #ef4444; cursor: pointer; font-weight: bold; font-size: 14px; padding: 5px; border-radius: 4px; flex-shrink: 0;}
+        .todo-del:hover { background: #fef2f2; }
+
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr)); gap: 20px; align-items: start; }
+        .card { background: var(--card-bg); border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); position: relative; transition: 0.3s; display: flex; flex-direction: column;}
+        .card.pinned { border: 2px solid #f59e0b; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.2); }
+        
+        .pin-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 18px; cursor: pointer; opacity: 0.4; transition: 0.2s; padding: 5px; border-radius: 50%; }
+        .pin-btn:hover { opacity: 1; background: #fef3c7; }
+        .pin-btn.active { opacity: 1; text-shadow: 0 0 5px #f59e0b; }
+
+        .status-badge { font-size: 10px; padding: 4px 10px; border-radius: 6px; font-weight: bold; color: white; text-transform: uppercase; }
+        .bg-uretim { background: #f59e0b; } .bg-booking { background: #8b5cf6; } .bg-ic { background: #0ea5e9; } .bg-limanda { background: #0284c7; } .bg-gumruk { background: #6366f1; } .bg-yolda { background: #10b981; } .bg-tamamlandi { background: #64748b; }
+        
+        .term-badge { font-size: 11px; font-weight: bold; color: #0ea5e9; background: #e0f2fe; padding: 2px 6px; border-radius: 4px; margin-left: 5px; margin-right: 5px; }
+        .product-line { font-size: 13px; font-weight: 600; color: #334155; margin-top: 8px; background: #f1f5f9; padding: 10px; border-radius: 6px; display: inline-block; width: 100%; box-sizing: border-box; }
+
+        .alert-box { padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; border: 1px solid transparent; }
+        
+        .checklist-container { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; margin-top: 10px; }
+        .checklist-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; max-height: 250px; overflow-y: auto; padding-right: 10px; }
+        .checklist-item { font-size: 11px; display: flex; align-items: center; gap: 6px; color: #1e293b; font-weight: 500; }
+        .checklist-item.done { color: #94a3b8; text-decoration: line-through; font-weight: normal; }
+
+        .evrak-progress { margin-top: 10px; font-size: 12px; font-weight: bold; color: #475569; display: flex; align-items: center; gap: 6px; }
+
+        .btn-mail { background: #0ea5e9; color: white; width: 100%; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;}
+        .btn-mail:hover:not(:disabled) { background: #0284c7; }
+        
+        .btn-folder { background: #f8fafc; color: #475569; width: 100%; margin-top: 10px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;}
+        .btn-folder:hover { background: #e2e8f0; color: #0f172a; }
+
+        .btn-track { background: #10b981; color: white; width: 100%; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;}
+        .btn-track:hover { background: #059669; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 10px; box-sizing: border-box;}
+        .modal { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 850px; max-height: 90vh; overflow-y: auto; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        input, select, textarea { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; width: 100%; box-sizing: border-box; font-family: inherit; }
+        
+        .btn-add { background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-ship { background: #4f46e5; color: white; padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-sync { background: white; color: #0f172a; padding: 8px 15px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: bold; cursor: pointer; font-size:13px; margin:0; transition: 0.2s;}
+        .btn-sync:hover { background: #f1f5f9; border-color: #94a3b8; }
+        
+        .step-label { color: #1e293b; cursor: pointer; font-weight: 600; font-size: 11px; display: flex; flex-direction: row; align-items: center; gap: 10px; background: white; padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin: 0; }
+        .evrak-label { color: #1e293b; cursor: pointer; font-weight: 600; font-size: 11px; display: flex; flex-direction: row; align-items: center; gap: 10px; background: white; padding: 8px 10px; border-radius: 8px; border: 1px solid #cbd5e1; transition: 0.5s; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin: 0; }
+        
+        .step-label input[type="checkbox"], .evrak-label input[type="checkbox"] { width: 16px; height: 16px; margin: 0; flex-shrink: 0; accent-color: #0ea5e9; cursor: pointer; }
+        .step-label:hover:not(.locked), .evrak-label:hover { border-color: #0ea5e9; background: #f0f9ff; }
+        .step-label.locked { color: #94a3b8; cursor: not-allowed; background: #f8fafc; border-color: #e2e8f0; opacity: 0.6; }
+
+        @keyframes pulseAlert { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
+
+        @media (prefers-reduced-motion: reduce) {
+            .deadline-danger { animation: none; }
+        }
+
+        .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+        .note-badge { font-size: 11px; font-weight: 600; background: #fefce8; color: #a16207; padding: 6px 10px; border-radius: 8px; border: 1px solid #fef08a; display: flex; align-items: flex-start; gap: 6px; cursor: help; word-break: break-word; white-space: normal; line-height: 1.4; width: 100%; box-sizing: border-box; }
+        .gemi-badge { font-size: 11px; font-weight: bold; padding: 10px; border-radius: 8px; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+        .deadline-danger { color: #dc2626; animation: pulseAlert 1.5s infinite; background: #fef2f2; border-color: #fca5a5; padding: 2px 4px; border-radius: 4px;}
+        .gemi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 10px; color: #475569;}
+        .price-tag { color: #059669; font-weight: bold; background: #ecfdf5; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; border: 1px solid #a7f3d0; }
+        
+        .evrak-grid-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        
+        .next-task-banner { background: #e0e7ff; border: 1px solid #c7d2fe; padding: 12px 15px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; margin-top: 15px; }
+        .btn-complete { background: #4f46e5; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 12px; }
+        .btn-complete:hover { background: #4338ca; }
+        .toggle-process-btn { width: 100%; background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; color: #475569; font-size: 11px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+        .toggle-process-btn:hover { background: #e2e8f0; color: #0f172a; }
+        .progress-container { width: 100%; background: #e2e8f0; border-radius: 4px; height: 6px; overflow: hidden; margin-top: 5px; }
+        .progress-fill { background: #0ea5e9; height: 100%; transition: width 0.5s ease; }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .header h1 { font-size: 22px; }
+            .header-right { position: relative; top: auto; right: auto; align-items: center; margin-top: 15px; width: 100%; }
+            .header-actions { flex-direction: row; flex-wrap: wrap; width: 100%; justify-content: center; }
+            .header-actions button { flex: 1; font-size: 12px; padding: 10px; min-width: 140px;}
+            .controls { flex-direction: column; gap: 10px; padding: 12px;}
+            .control-group { min-width: 100%; }
+            .form-grid { grid-template-columns: 1fr; gap: 10px; } 
+            .evrak-grid-wrapper { grid-template-columns: 1fr; } 
+            .gemi-grid { grid-template-columns: 1fr; } 
+            .todo-input-group { flex-direction: column; align-items: stretch; }
+            .todo-input-group input[type="text"], .todo-input-group input[type="datetime-local"], .todo-input-group button { width: 100%; }
+            .todo-item { flex-wrap: wrap; }
+            .todo-date { margin-left: 28px; width: 100%; margin-top: 5px; } 
+            .card { padding: 15px; }
+            .product-line { display: flex; flex-direction: column; gap: 5px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="passwordGate" style="position:fixed; inset:0; background:#0f172a; display:flex; align-items:center; justify-content:center; z-index:99999; padding:20px; box-sizing:border-box;">
+    <form id="passwordGateForm" style="background:white; padding:30px; border-radius:12px; width:100%; max-width:320px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.3);">
+        <div style="font-size:32px; margin-bottom:10px;">🔒</div>
+        <h1 style="margin:0 0 15px; font-size:18px; color:#0f172a;">Onur Mermer Sevkiyat Takip</h1>
+        <label for="gatePassword" class="visually-hidden">Şifre</label>
+        <input type="text" id="gatePassword" placeholder="Şifre" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box; margin-bottom:10px; font-size:14px;" required>
+        <div id="gateError" role="alert" style="color:#dc2626; font-size:12px; margin-bottom:10px; display:none;">Hatalı şifre, tekrar deneyin.</div>
+        <button type="submit" style="width:100%; padding:10px; background:#0f172a; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px;">Giriş Yap</button>
+    </form>
+</div>
+
+<div id="appRoot" style="display:none;">
+<header class="header">
+    <h1>Onur Mermer Sevkiyat Takip</h1>
+    <span>by Hüseyin ÇİLENTİ</span>
+
+    <div class="header-right">
+        <div class="header-actions">
+            <button class="btn-sync" onclick="fetchData(false)">🔄 Yenile</button>
+            <button class="btn-ship" onclick="openShipModal()">🛳️ Gemi Programları</button>
+            <button class="btn-add" onclick="openModal()">+ Yeni Sevkiyat Ekle</button>
+        </div>
+        <div id="syncStatusIndicator" role="status" aria-live="polite" style="font-size: 12px; font-weight: bold; color: #64748b;">⏳ Bağlanıyor...</div>
+    </div>
+</header>
+
+<main>
+<div class="controls">
+    <div class="control-group"><label for="searchBox">🔍 Arama</label><input type="text" id="searchBox" placeholder="Müşteri veya PO No..." oninput="render()"></div>
+    <div class="control-group">
+        <label for="asamaFilter">📌 Aşama Filtresi</label>
+        <select id="asamaFilter" onchange="render()">
+            <option value="Tümü">Tüm Aşamalar</option>
+            <option value="Üretimde">Üretimde</option>
+            <option value="Booking Bekleniyor">Booking Bekleniyor</option>
+            <option value="İç Nakliye">İç Nakliye</option>
+            <option value="Limanda">Limanda</option>
+            <option value="Gümrükte">Gümrükte</option>
+            <option value="Yolda">Yolda</option>
+            <option value="Tamamlandı">Tamamlandı</option>
+        </select>
+    </div>
+</div>
+
+<div class="todo-section" aria-labelledby="todoHeading">
+    <h2 id="todoHeading" class="todo-header">📝 Genel Ajanda & Yapılacaklar Listesi</h2>
+    <div class="todo-input-group">
+        <label for="todoInputText" class="visually-hidden">Görev veya not metni</label>
+        <input type="text" id="todoInputText" placeholder="Kendinize bir not veya görev ekleyin... (Örn: Yarın sabah acenteyi ara)">
+        <label for="todoInputDate" class="visually-hidden">Hatırlatma tarihi ve saati</label>
+        <input type="datetime-local" id="todoInputDate" aria-label="Hatırlatma tarihi ve saati">
+        <button onclick="addTodo()">Ekle</button>
+    </div>
+    <div class="todo-list" id="todoListContainer"></div>
+</div>
+
+<div id="loading" role="status" aria-live="polite" style="text-align: center; padding: 30px; font-weight: bold;">☁️ Bulut verileri senkronize ediliyor...</div>
+<div class="card-grid" id="mainGrid"></div>
+</main>
+
+<div class="modal-overlay" id="shipModalOverlay">
+    <div class="modal" style="max-width: 600px;" role="dialog" aria-modal="true" aria-labelledby="shipModalTitle">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+            <h2 id="shipModalTitle" style="margin: 0; color: #4f46e5;">🛳️ Gemi Programları (Master Data)</h2>
+            <button onclick="closeOverlay('shipModalOverlay')" aria-label="Kapat" style="background:none; border:none; font-size:24px; cursor:pointer; color:#64748b;">&times;</button>
+        </div>
+        <div style="background: #eff6ff; padding: 15px; border-radius: 10px; border: 1px solid #bfdbfe; margin-bottom: 20px;">
+            <div style="font-weight: bold; color: #1e40af; font-size: 12px;">+ Yeni Gemi Ekle</div>
+            <form id="shipAddForm" onsubmit="saveShip(event)">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                    <div style="grid-column: span 2;">
+                        <label for="s_ad" class="visually-hidden">Gemi Adı & Sefer No</label>
+                        <input type="text" id="s_ad" placeholder="Gemi Adı & Sefer No" required>
+                    </div>
+                    <div><label for="s_liman" class="visually-hidden">Liman</label><select id="s_liman" required><option value="Antalya">Antalya</option><option value="İzmir">İzmir</option></select></div>
+                    <div><label for="s_ilk" style="font-size:10px;">İlk Giriş</label><input type="date" id="s_ilk" required></div>
+                    <div><label for="s_cut" style="font-size:10px; color:#dc2626; font-weight:bold;">Cut-Off</label><input type="date" id="s_cut" required></div>
+                    <div><label for="s_vgm" style="font-size:10px; color:#dc2626; font-weight:bold;">Son VGM</label><input type="datetime-local" id="s_vgm" required></div>
+                    <div><label for="s_eta" style="font-size:10px;">ETA (Varış)</label><input type="date" id="s_eta"></div>
+                    <div><label for="s_etd" style="font-size:10px;">ETD (Kalkış)</label><input type="date" id="s_etd"></div>
+                </div>
+                <button type="submit" id="saveShipBtn" class="btn-ship" style="width: 100%; margin-top: 10px;">Kaydet ve Listeye Ekle</button>
+            </form>
+        </div>
+        <div style="font-weight: bold; color: #334155; font-size: 12px;">Mevcut Kayıtlı Gemiler</div>
+        <div id="shipListContainer" style="max-height: 250px; overflow-y: auto; margin-top: 5px;"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+            <h2 id="modalTitle" style="margin: 0; color: var(--primary);">Sevkiyat Kaydı</h2>
+            <button onclick="closeModal()" aria-label="Kapat" style="background:none; border:none; font-size:24px; cursor:pointer; color:#64748b;">&times;</button>
+        </div>
+        <form id="shipmentForm" onsubmit="saveData(event)">
+            <input type="hidden" id="editId">
+            <input type="hidden" id="f_gemi_gizli">
+            <div class="form-grid">
+                <div><label for="f_musteri">Alıcı Firma *</label><input type="text" id="f_musteri" required></div>
+                <div><label for="f_proforma">Sipariş / PO No</label><input type="text" id="f_proforma"></div>
+
+                <div style="background: #f0fdf4; padding: 10px; border-radius: 8px; border: 1px solid #bbf7d0;">
+                    <label for="f_booking" style="color: #047857;">⚓ Booking No (Rezervasyon)</label>
+                    <input type="text" id="f_booking" placeholder="Acenteden gelen no" style="border-color: #86efac; background: white;">
+                </div>
+
+                <div>
+                    <div>Teslim Şekli, Dolum Yeri & Liman</div>
+                    <div style="display:flex; gap:5px;">
+                        <label for="f_teslimat" class="visually-hidden">Teslim Şekli</label>
+                        <select id="f_teslimat" style="flex:1;" onchange="handleLimanChange()">
+                            <option value="FOB">FOB</option><option value="CFR">CFR</option><option value="CIF">CIF</option><option value="EXW">EXW</option><option value="DAP">DAP</option>
+                        </select>
+                        <label for="f_dolum" class="visually-hidden">Dolum Yeri</label>
+                        <select id="f_dolum" style="flex:1;" onchange="handleLimanChange()">
+                            <option value="Fabrika Dolum">Fabrika Dolum</option><option value="Liman Dolum">Liman Dolum</option>
+                        </select>
+                        <label for="f_liman" class="visually-hidden">Liman</label>
+                        <select id="f_liman" style="flex:1;" onchange="handleLimanChange()">
+                            <option value="Antalya">Antalya</option><option value="İzmir">İzmir</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="background: #fffbeb; padding: 10px; border-radius: 8px; border: 1px solid #fde68a;">
+                    <label for="f_uretimTarihi" style="color: #92400e;">⏱️ Tahmini Üretim Bitiş Tarihi</label>
+                    <input type="date" id="f_uretimTarihi" style="border-color: #fcd34d; background: white;">
+                </div>
+
+                <div style="background: #eff6ff; padding: 10px; border-radius: 8px; border: 1px solid #bfdbfe;">
+                    <div style="color: #1d4ed8;">🚛 Varış Limanı & Araç Plakası</div>
+                    <div style="display:flex; gap:10px;">
+                        <label for="f_ulke" class="visually-hidden">Varış Limanı</label>
+                        <input type="text" id="f_ulke" placeholder="Varış Limanı" style="flex:1; border-color: #93c5fd; background: white;">
+                        <div style="flex:1; display:flex; gap:5px;">
+                            <label for="f_plaka" class="visually-hidden">Plaka</label>
+                            <input type="text" id="f_plaka" placeholder="Plaka" style="width:100%; border-color: #93c5fd; background: white;">
+                            <button type="button" id="btnSolon" style="display:none; background:#0284c7; color:white; border:none; border-radius:6px; padding:0 10px; font-weight:bold; cursor:pointer; font-size:10px; white-space:nowrap;" onclick="registerPlate()">🌐 Kayıt (Solon)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="grid-column: span 1; background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #4f46e5; grid-column: 1 / -1;">
+                    <label for="f_gemi_secim" style="font-weight: bold; color: #3730a3; display:flex; align-items:center; gap:8px;">🚢 Kayıtlı Gemi Programından Seçin</label>
+                    <select id="f_gemi_secim" style="width: 100%; margin-top: 10px; border-color: #a5b4fc;" onchange="selectShipFromDropdown()"></select>
+                    <div id="shipPreviewContainer" style="margin-top: 10px; display:none;"></div>
+                </div>
+
+                <div style="grid-column: span 1; background: #f1f5f9; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; grid-column: 1 / -1;">
+                    <div style="font-weight: bold; color: #334155;">🪨 Ürün, Ölçü ve Fiyat Listesi</div>
+                    <div id="productList" style="margin-top: 10px;"></div>
+                    <button type="button" onclick="addProductRow()" style="margin-top: 5px; background: #cbd5e1; color: #0f172a; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">+ Ürün Ekle</button>
+                </div>
+
+                <div style="grid-column: span 1; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1; grid-column: 1 / -1;">
+                    <label for="f_klasor" style="color: #475569;">📁 Lokal Evrak Klasörü</label>
+                    <input type="text" id="f_klasor" placeholder="C:\Sevkiyatlar\..." style="background: white;">
+                </div>
+
+                <div style="grid-column: span 1; grid-column: 1 / -1;">
+                    <label for="f_asama">📌 Mevcut Aşama (Otomatik Değişir)</label>
+                    <select id="f_asama" disabled style="background-color: #f8fafc; font-weight: bold; color: #0ea5e9; cursor: not-allowed; border-color: #bae6fd;">
+                        <option value="Üretimde">Üretimde</option>
+                        <option value="Booking Bekleniyor">Booking Bekleniyor</option>
+                        <option value="İç Nakliye">İç Nakliye</option>
+                        <option value="Limanda">Limanda</option>
+                        <option value="Gümrükte">Gümrükte</option>
+                        <option value="Yolda">Yolda</option>
+                        <option value="Tamamlandı">Tamamlandı</option>
+                    </select>
+                </div>
+
+                <div style="grid-column: span 1; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; grid-column: 1 / -1;">
+                    <div style="font-weight: bold; color: #0ea5e9; font-size: 14px;">📋 Dinamik Görev Haritası</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Görevleri sırasıyla işaretleyin. İlgili evraklar sistem tarafından otomatik olarak "Hazırlandı" şeklinde işaretlenecektir.</div>
+                    <div id="checklistGrid" class="checklist-grid"></div>
+                </div>
+
+                <div style="grid-column: span 1; background: #fffbeb; padding: 20px; border-radius: 12px; border: 1px solid #fde68a; grid-column: 1 / -1;">
+                    <div style="font-weight: bold; color: #d97706; font-size: 14px;">📄 Evrak Çantası (Otomatik Güncellenir)</div>
+                    <div id="evrakGrid" class="evrak-grid-wrapper"></div>
+                </div>
+
+                <div style="grid-column: span 1; grid-column: 1 / -1;">
+                    <div>📦 Konteyner Listesi</div>
+                    <div id="containerList"></div>
+                    <button type="button" onclick="addContainerRow()" style="margin-top: 10px; background: #e2e8f0; border: none; padding: 8px 12px; border-radius: 6px; font-weight: 600; cursor: pointer;">+ Konteyner Ekle</button>
+                </div>
+
+                <div style="background: #faf5ff; padding: 20px; border-radius: 12px; border: 1px solid #e879f9;">
+                    <div style="font-weight: bold; color: #a21caf;">⏰ Hatırlatıcı</div>
+                    <label for="f_hatirlatici_tarih" class="visually-hidden">Hatırlatıcı tarih ve saati</label>
+                    <input type="datetime-local" id="f_hatirlatici_tarih" style="margin-top:5px;">
+                    <label for="f_hatirlatici_metin" class="visually-hidden">Hatırlatıcı notu</label>
+                    <input type="text" id="f_hatirlatici_metin" placeholder="Notunuz..." style="margin-top:5px;">
+                </div>
+
+                <div style="background: #fefce8; padding: 20px; border-radius: 12px; border: 1px solid #fef08a;">
+                    <div style="font-weight: bold; color: #ca8a04;">📝 Notlar</div>
+                    <div id="noteList" style="margin-top: 10px; font-size: 12px; max-height: 100px; overflow-y: auto;"></div>
+                    <label for="f_yeni_not" class="visually-hidden">Yeni not</label>
+                    <input type="text" id="f_yeni_not" placeholder="Yeni not..." style="margin-top: 5px;">
+                    <button type="button" onclick="addNote()" style="width:100%; margin-top:5px; background:#ca8a04; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold;">Ekle</button>
+                </div>
+
+            </div>
+            <div style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" onclick="closeModal()" style="padding: 12px 25px; border: none; background: #f1f5f9; border-radius: 8px; font-weight: bold; cursor: pointer;">İptal</button>
+                <button type="submit" id="saveBtn" class="btn-add" style="padding: 12px 30px;">Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="emailOverlay">
+    <div class="modal" style="max-width: 600px;" role="dialog" aria-modal="true" aria-labelledby="emailModalTitle">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+            <h2 id="emailModalTitle" style="margin: 0; color: #0ea5e9;">✉️ Otomatik Mail Oluşturucu</h2>
+            <button onclick="closeOverlay('emailOverlay')" aria-label="Kapat" style="background:none; border:none; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        <p style="font-size: 13px; color: #64748b;">Hangi aşama için mail taslağı oluşturmak istiyorsunuz?</p>
+        <div id="emailButtonsContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
+    </div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+    // --------------------------------------------------------
+    // KENDİ SUPABASE PROJE URL VE ANON KEY'İNİ BURAYA YAPIŞTIR
+    // (Supabase Dashboard > Project Settings > API)
+    // --------------------------------------------------------
+    const SUPABASE_URL = 'https://vbyxupiqhuxtjahaifpp.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZieXh1cGlxaHV4dGphaGFpZnBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MjQ0NjcsImV4cCI6MjA5NzUwMDQ2N30.wzoEUvCGO3dAAolOyrcdzJs6kb2Si4opFRc2NIf8F7c';
+    const db = (SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY)
+        ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        : null;
+
+    let allData = [];
+    let allShips = []; 
+    let allTodos = []; 
+    let currentContainers = [];
+    let currentProducts = []; 
+    let currentNotes = []; 
+    let selectedShipment = null;
+    let autoSyncTimer = null;
+    let lastFocusedElement = null;
+
+    function escapeHtml(value) {
+        if (value === null || value === undefined) return '';
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function jsStr(value) {
+        return escapeHtml(JSON.stringify(value === null || value === undefined ? '' : String(value)));
+    }
+
+    function jsVal(value) {
+        return escapeHtml(JSON.stringify(value === undefined ? null : value));
+    }
+
+    function handleSyncError(err, message) {
+        console.error(err);
+        const detail = (err && (err.message || err.error_description || err.hint)) || String(err);
+        alert(message + '\n\nSUPABASE HATASI:\n' + detail + '\n\nVeriler sunucudan yeniden yükleniyor...');
+        fetchData(true);
+    }
+
+    function mapSevkiyatFromDb(row) {
+        return {
+            id: row.id,
+            musteri: row.musteri,
+            siparisNo: row.siparis_no,
+            bookingNo: row.booking_no,
+            teslimat: row.teslimat,
+            liman: row.liman,
+            dolum: row.dolum,
+            ulke: row.ulke,
+            plaka: row.plaka,
+            uretimTarihi: row.uretim_tarihi,
+            klasor: row.klasor,
+            asama: row.asama,
+            urun: JSON.stringify(row.urunler || []),
+            konteynerler: row.konteynerler || [],
+            notlar: JSON.stringify(row.notlar || []),
+            checklist: row.checklist || [],
+            evraklar: row.evraklar || [],
+            hatirlatici: row.hatirlatici || null,
+            gemi: row.gemi || null,
+            isPinned: !!row.is_pinned
+        };
+    }
+
+    function mapGemiFromDb(row) {
+        return {
+            id: row.id,
+            ad: row.ad,
+            liman: row.liman,
+            ilk: row.ilk_giris,
+            cut: row.cut_off,
+            vgm: row.vgm,
+            eta: row.eta,
+            etd: row.etd
+        };
+    }
+
+    function mapGorevFromDb(row) {
+        return {
+            id: row.id,
+            text: row.metin,
+            date: row.tarih,
+            isDone: !!row.tamamlandi_mi
+        };
+    }
+
+    function openOverlay(id) {
+        lastFocusedElement = document.activeElement;
+        const overlay = document.getElementById(id);
+        overlay.style.display = 'flex';
+        const focusable = overlay.querySelector('input, select, textarea, button');
+        if (focusable) focusable.focus();
+    }
+
+    function closeOverlay(id) {
+        document.getElementById(id).style.display = 'none';
+        if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+            lastFocusedElement.focus();
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        ['modalOverlay', 'shipModalOverlay', 'emailOverlay'].forEach(id => {
+            const overlay = document.getElementById(id);
+            if (overlay && overlay.style.display === 'flex') closeOverlay(id);
+        });
+    });
+
+    const allEvraklarDef = [
+        { id: 'e_proforma', label: 'Proforma Fatura' },
+        { id: 'e_fab_ceki', label: 'Fabrika Çeki Listesi' },
+        { id: 'e_kantar', label: 'Kantar Fişi / İrsaliye' },
+        { id: 'e_ilaclama', label: 'İlaçlama Sertifikası' },
+        { id: 'e_nihai_ceki', label: 'Nihai Çeki Listesi' },
+        { id: 'e_tr_fatura', label: 'Türkçe Fatura' },
+        { id: 'e_beyan', label: 'Gümrük Beyannamesi' },
+        { id: 'e_loading', label: 'Loading Note' },
+        { id: 'e_ci', label: 'Commercial Invoice (CI)' },
+        { id: 'e_pl', label: 'Packing List (PL)' },
+        { id: 'e_draft_bl', label: 'Draft B/L' },
+        { id: 'e_bl', label: 'Orijinal B/L / SWB' },
+        { id: 'e_dolasim', label: 'Dolaşım/Menşe Belgesi' }
+    ];
+
+    function getStepsForLiman(liman, teslimat, dolum) {
+        let steps = [];
+
+        if (dolum === 'Liman Dolum') {
+            steps = [
+                { id: 'l1', label: 'Müşteriden sipariş geldi. Proforma hazırlayıp müşteriye gönderiyorum.' },
+                { id: 'l2', label: 'Müşterinin siparişi onaylaması gerekiyor. Onayladı ve ön ödeme kontrolü yapıyorum.' },
+                { id: 'l3', label: 'Kendi içimizdeki sipariş makbuzuna gerekli bilgileri yaz. Satışçının ve fabrika müdürünün imzalarını al, üretime talimat ver.' },
+                { id: 'l4', label: 'Üretim bittiğinde sevkiyatın gönderdiği çeki listesini alıyorum.' },
+                { id: 'l5', label: 'Gelen çeki listesine göre CI ve PL taslağı hazırlayıp alıcıya haber veriyoruz.' },
+                { id: 'l6', label: 'Alıcının acentesi booking rezervasyonu için tarafımıza ulaşıp hazır mı diye sorar.' },
+                { id: 'l7', label: 'Siparişin hazır olup olmadığını kontrol ediyorum.' },
+                { id: 'l8', label: 'Sipariş hazırsa, sevkiyat ile görüşüp kendi aracımızı limana gidiş için planlıyorum.' },
+                { id: 'l9', label: 'Acenteye lokal ücretleri sorup booking oluşturabilir miyiz diye soruyorum.' },
+                { id: 'l10', label: 'Booking onayı bekliyorum.' },
+                { id: 'l11', label: 'Booking onayı geldi.' },
+                { id: 'l12', label: liman === 'İzmir' ? 'Gümrükçüye gümrükleme işlemleri için haber verme amaçlı çeki listesini gönder.' : 'Gümrükçüye gözetmenlik ve gümrükleme işlemleri için haber verme amaçlı çeki listesini gönder.' },
+                { id: 'l13', label: 'İlaçlama firmasına haber veriyorum.' },
+                { id: 'l14', label: 'Gümrükçüden konteynerlerin yüklendiğine dair haber maili bekliyorum.' },
+                { id: 'l15', label: 'Gümrükçüden haber gelip konteyner no belli olduysa, nihai çeki listesine son şeklini ver. İrsaliye taslağına göre TR Fatura taslağı oluşturup muhasebeye gönder ve onaylı resmi faturayı al.' },
+                { id: 'l16', label: 'Loading note ve VGM oluşturup, çeki listesi ile birlikte acenteye gönder.' },
+                { id: 'l17', label: 'Muhasebeden gelen TR fatura ve son şeklini verdiğim çeki listesini beyanname hazırlaması için gümrükçüye gönder.' },
+                { id: 'l18', label: 'Gümrükçüden beyanname geldi mi kontrol et.' },
+                { id: 'l19', label: 'Gelen beyannameyi acenteye gönder.' },
+                { id: 'l20', label: 'Acentenin draft(konşimento taslağı) hazırlamasını bekle. Geldiğinde incele, ödeme türüne göre seawaybill veya original olarak hazırlat.' },
+                { id: 'l21', label: 'Düzenlenen seawaybill evrağı veya original evrak geldiğinde kontrol et.' },
+                { id: 'l22', label: 'Nihai commercial invoice ve packing list hazırla.' },
+                { id: 'l23', label: 'İlgili ülkeye göre dolaşım belgesini hazırla.' },
+                { id: 'l25', label: 'Son süreç olarak evrakları DHL ile alıcıya gönder.' }
+            ];
+            
+            if(liman === 'İzmir') {
+                let idx = steps.findIndex(s => s.id === 'l12');
+                steps.splice(idx + 1, 0, { id: 'l12_izmir', label: 'Gözetmenlik işlemleri için Doğru Liman Hizmetleri\'ne (Harbi Kurt) haber ver.' });
+            }
+
+        } else {
+            let s9_label = teslimat === 'EXW' ? 'Acentenin yükü fabrikadan alacağı tarihi sor, araç bilgilerini öğren' : 'Sevkiyatı arayıp boş konteyneri alacak aracın plakasını ve tarihini öğren, sisteme gir';
+            let s12_label = teslimat === 'EXW' ? 'Gümrükçüye yükleme bilgilerini mail olarak gönder' : 'Gümrükçüden ihraç kayıt numarası iste';
+
+            steps = [
+                { id: 's1', label: 'Proforma hazırlayıp müşteriye gönder' },
+                { id: 's2', label: 'Müşteri onayı ve ön ödeme kontrolü yap' },
+                { id: 's3', label: 'Kendi içimizdeki sipariş makbuzuna gerekli bilgileri yaz, imzaları al ve üretime talimat ver' },
+                { id: 's4', label: 'Üretim bittiğinde sevkiyatın gönderdiği çeki listesini al' },
+                { id: 's5', label: 'Gelen çeki listesine göre CI ve PL taslağı hazırlayıp alıcıya siparişin hazır olduğunu haber ver' },
+                { id: 's6', label: 'Alıcının acentesinden booking rezervasyonu bekle/al' },
+                { id: 's7', label: 'Acenteye lokal ücretleri sor, gerekli durumda pazarlık et' },
+                { id: 's8', label: 'Cut-off süresini kontrol et, en uygun gemiyi seçip rezervasyon yap' },
+                { id: 's9', label: s9_label }
+            ];
+
+            if(liman === 'Antalya') {
+                steps.push({ id: 's10', label: 'Öğrenilen plakayı Liman Portalı\'na (Solon) kayıt ettir' });
+            }
+
+            steps.push(
+                { id: 's11', label: 'Konteyner fabrikaya geldi' },
+                { id: 's12', label: s12_label },
+                { id: 's13', label: 'İlaçlama firmasına haber ver' },
+                { id: 's14', label: 'Yüklemenin bitmesini bekleyip sevkiyattan net tonajlı kesin çeki listesi ve irsaliye taslağını bekle' },
+                { id: 's15', label: 'Gelen listeyi Nihai Çeki Listesi olarak düzenle, TR Fatura taslağı oluşturup muhasebeye gönder, resmi faturayı al' },
+                { id: 's16', label: 'TR Fatura ve Nihai Çeki listesini gümrükçüye gönder' },
+                { id: 's17', label: 'Loading Note ve VGM oluşturup, çeki listesi ile birlikte acenteye gönder' },
+                { id: 's18', label: 'Gümrükçüden beyanname geldi mi kontrol et' },
+                { id: 's19', label: 'Beyannameyi acenteye gönder' },
+                { id: 's20', label: 'Acenteden Draft B/L gelmesini bekle, incele, ödeme türüne göre talimat ver' },
+                { id: 's21', label: 'Acenteden düzenlenen Nihai Seawaybill / Original evrağını teslim al' },
+                { id: 's22', label: 'Nihai Commercial Invoice ve Packing List hazırlayıp düzenle' },
+                { id: 's23', label: 'İlgili ülkeye göre Dolaşım/Menşe Belgesini hazırla' },
+                { id: 's25', label: 'Orijinal evrakları DHL ile alıcıya gönder' }
+            );
+        }
+        return steps.map((s, idx) => ({ id: s.id, label: `${idx + 1}. ${s.label}` }));
+    }
+
+    function registerPlate() {
+        let plk = document.getElementById('f_plaka').value;
+        if(!plk || String(plk).trim() === "") { alert("Lütfen önce sol taraftaki kutuya plakayı girin!"); return; }
+        navigator.clipboard.writeText(plk).then(() => {
+            alert(`Plaka (${plk}) hafızaya kopyalandı! Giriş yapmak için Solon portal açılıyor...`);
+            window.open('https://www.solonportal.qterminals-antalya.com/identity/account/login', '_blank');
+        });
+    }
+
+    function copyFolderPath(path) {
+        navigator.clipboard.writeText(path).then(() => {
+            const toast = document.createElement('div');
+            toast.setAttribute('role', 'status');
+            toast.setAttribute('aria-live', 'polite');
+            toast.innerText = "📁 Klasör yolu kopyalandı! (Win+E yapıp adres çubuğuna yapıştırın)";
+            toast.style.cssText = "position:fixed; bottom:20px; right:20px; background:#10b981; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:9999; box-shadow:0 4px 6px rgba(0,0,0,0.1); animation: fadein 0.3s;";
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = '0.3s'; setTimeout(()=>toast.remove(), 300); }, 3000);
+        });
+    }
+
+    function trackBooking(bookingNo) {
+        if(!bookingNo || String(bookingNo).trim() === "") { alert("Lütfen önce Booking Numarası girin!"); return; }
+        navigator.clipboard.writeText(bookingNo).then(() => {
+            const toast = document.createElement('div');
+            toast.setAttribute('role', 'status');
+            toast.setAttribute('aria-live', 'polite');
+            toast.innerText = `🌍 Booking Kopyalandı: ${bookingNo} - Takip sayfası açılıyor...`;
+            toast.style.cssText = "position:fixed; bottom:20px; right:20px; background:#f59e0b; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:9999; box-shadow:0 4px 6px rgba(0,0,0,0.1); animation: fadein 0.3s;";
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = '0.3s'; setTimeout(()=>toast.remove(), 4000); }, 4000);
+            window.open('https://www.msc.com/en/track-a-shipment', '_blank');
+        });
+    }
+
+    function formatDateStr(dateStr, includeTime = false) {
+        if(!dateStr) return '-';
+        const d = new Date(dateStr);
+        if(isNaN(d)) return '-';
+        let res = `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getFullYear()}`;
+        if(includeTime) res += ` ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        return res;
+    }
+
+    // Basit istemci taraflı erişim koruması. Gerçek kimlik doğrulama değildir,
+    // yalnızca linki tesadüfen bulan/deneyen kişileri engellemek içindir.
+    const GATE_PASSWORD = 'YRiXDMwzob%Giw';
+
+    function showApp() {
+        document.getElementById('passwordGate').style.display = 'none';
+        document.getElementById('appRoot').style.display = '';
+        initApp();
+    }
+
+    document.getElementById('passwordGateForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('gatePassword');
+        if (input.value.trim() === GATE_PASSWORD) {
+            localStorage.setItem('onurMermerGateOk', '1');
+            showApp();
+        } else {
+            document.getElementById('gateError').style.display = 'block';
+            input.value = '';
+            input.focus();
+        }
+    });
+
+    function initApp() {
+        if (!db) {
+            document.getElementById('loading').innerHTML = `<span style="color:#ef4444; font-weight:bold;">⚠️ HATA: Lütfen Supabase URL ve Anon Key bilgilerini yapıştırın!</span><br><br>Lokal yedek açılıyor...`;
+            setTimeout(loadLocalBackup, 3000);
+            return;
+        }
+        fetchData(false);
+
+        autoSyncTimer = setInterval(() => { fetchData(true); }, 30000);
+    }
+
+    if (localStorage.getItem('onurMermerGateOk') === '1') {
+        showApp();
+    }
+
+    async function fetchData(isSilent) {
+        if (isSilent && document.getElementById('modalOverlay').style.display === 'flex') return;
+
+        const indicator = document.getElementById('syncStatusIndicator');
+
+        if (!isSilent) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').innerText = "☁️ Bulut verileri senkronize ediliyor...";
+            indicator.innerText = "⏳ Bağlanıyor...";
+            indicator.style.color = "#f59e0b";
+        } else {
+            indicator.innerText = "🔄 Arka planda yenileniyor...";
+            indicator.style.color = "#0ea5e9";
+        }
+
+        try {
+            const [sevkiyatRes, gemiRes, gorevRes] = await Promise.all([
+                db.from('sevkiyatlar').select('*').order('created_at', { ascending: false }),
+                db.from('gemiler').select('*').order('created_at', { ascending: false }),
+                db.from('gorevler').select('*').order('created_at', { ascending: false })
+            ]);
+
+            if (sevkiyatRes.error) throw sevkiyatRes.error;
+            if (gemiRes.error) throw gemiRes.error;
+            if (gorevRes.error) throw gorevRes.error;
+
+            const newShipments = (sevkiyatRes.data || []).map(mapSevkiyatFromDb);
+            const newShips = (gemiRes.data || []).map(mapGemiFromDb);
+            const newTodos = (gorevRes.data || []).map(mapGorevFromDb);
+
+            const newDataStr = JSON.stringify(newShipments);
+            const newTodosStr = JSON.stringify(newTodos);
+            const oldDataStr = JSON.stringify(allData);
+            const oldTodosStr = JSON.stringify(allTodos);
+
+            if (!isSilent || newDataStr !== oldDataStr || newTodosStr !== oldTodosStr) {
+                allData = newShipments;
+                allShips = newShips;
+                allTodos = newTodos;
+
+                localStorage.setItem('onurMermerData_v6', JSON.stringify(allData));
+                localStorage.setItem('onurMermerTodos_v6', JSON.stringify(allTodos));
+
+                document.getElementById('loading').style.display = 'none';
+                render();
+                renderTodos();
+            }
+
+            indicator.innerHTML = `🟢 Güncel (${new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})})`;
+            indicator.style.color = "#10b981";
+
+        } catch(e) {
+            console.error("Sistem Hatası:", e);
+            indicator.innerText = "🔴 Bağlantı Koptu";
+            indicator.style.color = "#ef4444";
+            if (!isSilent) {
+                document.getElementById('loading').innerHTML = `<span style="color:#ef4444; font-weight:bold;">⚠️ Bağlantı Hatası</span><br>Lokal sürüm açılıyor...`;
+                setTimeout(loadLocalBackup, 2000);
+            }
+        }
+    }
+
+    function loadLocalBackup() {
+        document.getElementById('loading').style.display = 'none';
+        allData = JSON.parse(localStorage.getItem('onurMermerData_v6')) || [];
+        allTodos = JSON.parse(localStorage.getItem('onurMermerTodos_v6')) || [];
+        render();
+        renderTodos();
+    }
+
+    async function togglePin(id) {
+        const index = allData.findIndex(d => d.id === id);
+        if (index > -1) {
+            allData[index].isPinned = !allData[index].isPinned;
+            localStorage.setItem('onurMermerData_v6', JSON.stringify(allData));
+            render();
+            try {
+                const { error } = await db.from('sevkiyatlar').update({ is_pinned: allData[index].isPinned }).eq('id', id);
+                if (error) throw error;
+            } catch (e) {
+                handleSyncError(e, "Sabitleme durumu kaydedilemedi.");
+            }
+        }
+    }
+
+    function renderTodos() {
+        const container = document.getElementById('todoListContainer');
+        if (allTodos.length === 0) {
+            container.innerHTML = `<span style="color:#94a3b8; font-size:12px; font-style:italic;">Henüz bir görev veya hatırlatıcı eklenmemiş. Gündeminiz bomboş! ☕</span>`;
+            return;
+        }
+
+        let sortedTodos = [...allTodos].sort((a, b) => {
+            if (a.isDone && !b.isDone) return 1;
+            if (!a.isDone && b.isDone) return -1;
+            if (!a.date && !b.date) return 0;
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            return new Date(a.date) - new Date(b.date);
+        });
+
+        container.innerHTML = sortedTodos.map(t => {
+            let dateHTML = "";
+            if (t.date) {
+                let d = new Date(t.date);
+                dateHTML = `<div class="todo-date">⏰ ${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}</div>`;
+            }
+            return `
+            <div class="todo-item ${t.isDone ? 'done' : ''}">
+                <input type="checkbox" class="todo-checkbox" aria-label="${escapeHtml(t.text)} - tamamlandı olarak işaretle" ${t.isDone ? 'checked' : ''} onchange="toggleTodo(${jsVal(t.id)})">
+                <div class="todo-text">${escapeHtml(t.text)}</div>
+                ${dateHTML}
+                <button class="todo-del" onclick="deleteTodo(${jsVal(t.id)})" aria-label="Sil: ${escapeHtml(t.text)}" title="Sil">✖</button>
+            </div>
+            `;
+        }).join('');
+    }
+
+    async function addTodo() {
+        const textInput = document.getElementById('todoInputText');
+        const dateInput = document.getElementById('todoInputDate');
+        if (textInput.value.trim() === "") { alert("Lütfen bir görev/not yazın."); return; }
+
+        const text = textInput.value.trim();
+        const date = dateInput.value;
+        textInput.value = "";
+        dateInput.value = "";
+
+        try {
+            const { data, error } = await db.from('gorevler')
+                .insert({ metin: text, tarih: date || null, tamamlandi_mi: false })
+                .select()
+                .single();
+            if (error) throw error;
+
+            allTodos.push(mapGorevFromDb(data));
+            localStorage.setItem('onurMermerTodos_v6', JSON.stringify(allTodos));
+            renderTodos();
+        } catch(e) {
+            handleSyncError(e, "Görev kaydedilemedi.");
+        }
+    }
+
+    async function toggleTodo(id) {
+        const index = allTodos.findIndex(t => t.id === id);
+        if (index > -1) {
+            allTodos[index].isDone = !allTodos[index].isDone;
+            localStorage.setItem('onurMermerTodos_v6', JSON.stringify(allTodos));
+            renderTodos();
+
+            try {
+                const { error } = await db.from('gorevler').update({ tamamlandi_mi: allTodos[index].isDone }).eq('id', id);
+                if (error) throw error;
+            } catch(e) {
+                handleSyncError(e, "Görev durumu kaydedilemedi.");
+            }
+        }
+    }
+
+    async function deleteTodo(id) {
+        allTodos = allTodos.filter(t => t.id !== id);
+        localStorage.setItem('onurMermerTodos_v6', JSON.stringify(allTodos));
+        renderTodos();
+        try {
+            const { error } = await db.from('gorevler').delete().eq('id', id);
+            if (error) throw error;
+        } catch(e) {
+            handleSyncError(e, "Görev silinemedi.");
+        }
+    }
+
+
+    function render() {
+        const grid = document.getElementById('mainGrid');
+        const search = document.getElementById('searchBox').value.toLowerCase();
+        const asama = document.getElementById('asamaFilter').value;
+        const cardsHTML = [];
+
+        let sortedData = [...allData].sort((a, b) => {
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+
+            const aScore = a.checklist ? a.checklist.length : 0;
+            const bScore = b.checklist ? b.checklist.length : 0;
+            if (aScore !== bScore) return aScore - bScore;
+            
+            if (!a.uretimTarihi && !b.uretimTarihi) return 0;
+            if (!a.uretimTarihi) return 1;
+            if (!b.uretimTarihi) return -1;
+            return new Date(a.uretimTarihi) - new Date(b.uretimTarihi);
+        });
+
+        sortedData.forEach(d => {
+            if (asama !== 'Tümü' && d.asama !== asama) return;
+            if (search && !(d.musteri||'').toLowerCase().includes(search) && !(d.siparisNo||'').toLowerCase().includes(search)) return;
+
+            let dolumStr = d.dolum || "Fabrika Dolum";
+            let activeSteps = getStepsForLiman(d.liman || "Antalya", d.teslimat || "FOB", dolumStr);
+
+            let completedCount = 0;
+            let nextStep = null;
+            let chkList = d.checklist || [];
+            let processHTML = activeSteps.map(s => {
+                const isDone = chkList.includes(s.id);
+                if (isDone) completedCount++;
+                else if (!nextStep) nextStep = s; 
+                return `<div class="checklist-item ${isDone ? 'done' : ''}">${isDone ? '✅' : '⏳'} ${s.label}</div>`;
+            }).join('');
+
+            let progressPct = Math.round((completedCount / activeSteps.length) * 100);
+
+            let nextTaskHTML = nextStep 
+                ? `<div class="next-task-banner">
+                     <div style="flex:1; margin-right:10px;">
+                        <div style="font-size:10px; color:#4f46e5; font-weight:bold;">👉 SIRADAKİ GÖREV</div>
+                        <div style="font-size:13px; font-weight:bold; color:#1e293b; margin-top:2px;">${nextStep.label}</div>
+                     </div>
+                     <button class="btn-complete" onclick="editData(${jsStr(d.id)})">İşle & İlerle ➔</button>
+                   </div>`
+                : `<div class="next-task-banner" style="background:#f0fdf4; border-color:#bbf7d0;">
+                     <div style="font-size:14px; font-weight:bold; color:#059669; width:100%; text-align:center;">🎉 Tüm Operasyon Tamamlandı!</div>
+                   </div>`;
+
+            let progressBarHTML = `
+                <div style="margin-top:15px; margin-bottom:5px;">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:bold; color:#64748b; margin-bottom:4px;">
+                        <span>Süreç İlerlemesi (${completedCount}/${activeSteps.length})</span>
+                        <span>%${progressPct}</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-fill" style="width:${progressPct}%;"></div>
+                    </div>
+                </div>
+            `;
+
+            let asamaClass = "uretim";
+            if (d.asama === "Booking Bekleniyor") asamaClass = "booking";
+            else if (d.asama === "İç Nakliye") asamaClass = "ic";
+            else if (d.asama === "Limanda") asamaClass = "limanda";
+            else if (d.asama === "Gümrükte") asamaClass = "gumruk";
+            else if (d.asama === "Yolda") asamaClass = "yolda";
+            else if (d.asama === "Tamamlandı") asamaClass = "tamamlandi";
+
+            let uretimUyariHTML = '';
+            if (d.uretimTarihi) {
+                const isProductionDone = chkList.includes('s4') || chkList.includes('s5') || chkList.includes('l4') || chkList.includes('l5');
+                const targetDate = new Date(d.uretimTarihi);
+                const formattedDate = targetDate.toLocaleDateString('tr-TR');
+
+                if (isProductionDone) {
+                    uretimUyariHTML = `<div class="alert-box" style="background:#f0fdf4; color:#059669; border-color:#bbf7d0; margin-bottom:0;">✅ Üretim Tamamlandı</div>`;
+                } else {
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    const diffTime = targetDate - today;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (diffDays <= 0) {
+                        uretimUyariHTML = `<div class="alert-box" style="background:#fef2f2; color:#dc2626; border-color:#fecaca; margin-bottom:0;">⚠️ ÜRETİM SÜRESİ DOLDU</div>`;
+                    } else if (diffDays <= 7) {
+                        uretimUyariHTML = `<div class="alert-box" style="background:#fffbeb; color:#d97706; border-color:#fde68a; margin-bottom:0;">⏳ Üretim: ${diffDays} gün kaldı</div>`;
+                    } else {
+                        uretimUyariHTML = `<div class="alert-box" style="background:#f8fafc; color:#64748b; border-color:#e2e8f0; margin-bottom:0;">📅 Üretim Bitiş: ${formattedDate}</div>`;
+                    }
+                }
+            }
+
+            let plakaGosterimi = d.plaka ? `<div style="font-size:12px; color:#1d4ed8; font-weight:bold; margin-top:5px;">🚛 Araç: ${escapeHtml(d.plaka)}</div>` : '';
+            
+            let e_count = d.evraklar ? d.evraklar.length : 0;
+            let e_total = allEvraklarDef.length;
+            let e_color = e_count === e_total ? "#059669" : "#d97706";
+
+            let ozelHatirlaticiHTML = '';
+            if (d.hatirlatici && d.hatirlatici.metin) {
+                let hStyle = "background: #fdf4ff; color: #a21caf; border-color: #f5d0fe;";
+                let hIcon = "⏳";
+                let hTimeText = "";
+
+                if (d.hatirlatici.tarih) {
+                    const hDate = new Date(d.hatirlatici.tarih);
+                    const now = new Date();
+                    hTimeText = `${hDate.getDate().toString().padStart(2, '0')}.${(hDate.getMonth()+1).toString().padStart(2, '0')} ${hDate.toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})} - `;
+                    if (hDate < now) { hStyle = "background: #fef2f2; color: #dc2626; border-color: #fca5a5; animation: pulseAlert 1.5s infinite;"; hIcon = "⏰"; }
+                }
+                let fullText = escapeHtml(d.hatirlatici.metin);
+                ozelHatirlaticiHTML = `<div style="margin-top: 6px; display: flex;"><span title="${escapeHtml(d.hatirlatici.metin)}" style="font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 8px; border: 1px solid; cursor: help; display: flex; align-items: flex-start; gap: 6px; word-break: break-word; white-space: normal; line-height: 1.4; width: 100%; box-sizing: border-box; ${hStyle}"><span style="flex-shrink:0;">${hIcon}</span><span><strong>${hTimeText}</strong>${fullText}</span></span></div>`;
+            }
+
+            let gemiHTML = "";
+            if (d.gemi && d.gemi.ad) {
+                const now = new Date();
+                const cutDate = d.gemi.cut ? new Date(d.gemi.cut) : null;
+                const vgmDate = d.gemi.vgm ? new Date(d.gemi.vgm) : null;
+                
+                let cutClass = (cutDate && (cutDate - now < 86400000)) ? "deadline-danger" : "";
+                let vgmClass = (vgmDate && (vgmDate - now < 86400000)) ? "deadline-danger" : "";
+
+                gemiHTML = `
+                <div class="gemi-badge">
+                    <div style="border-bottom: 1px solid #bfdbfe; padding-bottom: 4px;">🚢 <strong>${escapeHtml(d.gemi.ad.toUpperCase())}</strong></div>
+                    <div class="gemi-grid">
+                        <div>🟢 İlk Giriş: ${formatDateStr(d.gemi.ilk)}</div>
+                        <div class="${cutClass}">⛔ Cut-Off: ${formatDateStr(d.gemi.cut)}</div>
+                        <div class="${vgmClass}">📄 VGM: ${formatDateStr(d.gemi.vgm, true)}</div>
+                        <div>⚓ ETD: ${formatDateStr(d.gemi.etd)}</div>
+                        <div>📍 ETA: ${formatDateStr(d.gemi.eta)}</div>
+                    </div>
+                </div>`;
+            }
+
+            let noteHTML = "";
+            let pNotes = [];
+            try { pNotes = JSON.parse(d.notlar); if(!Array.isArray(pNotes)) throw 'e'; } catch(e) { if(d.notlar) pNotes = [{tarih: 'Eski Not', metin: d.notlar}]; }
+            if(pNotes.length > 0) {
+                noteHTML = `<div style="display:flex; flex-direction:column; gap:5px; margin-top:8px;">` +
+                    pNotes.map(n => {
+                        let fullN = escapeHtml(n.metin);
+                        let t = (n.tarih && n.tarih.includes(' ')) ? n.tarih.split(' ')[0] : n.tarih;
+                        return `<span class="note-badge" title="${escapeHtml(n.metin)}"><span style="flex-shrink:0;">📝</span><span><strong>${escapeHtml(t)}:</strong> ${fullN}</span></span>`;
+                    }).join('') + `</div>`;
+            }
+
+            let pList = [];
+            try { pList = JSON.parse(d.urun); if(!Array.isArray(pList)) throw 'e'; } catch(e) { pList = [{cins: d.urun || 'Belirtilmedi', olcu: d.olcu || '', fiyat: ''}]; }
+            
+            let productHTML = pList.map(p => {
+                return `<div style="margin-bottom:2px;">🪨 <strong>${escapeHtml(p.cins || 'Belirtilmedi')}</strong> ${p.olcu ? '- ' + escapeHtml(p.olcu) : ''} ${p.fiyat ? `<span class="price-tag">$${escapeHtml(p.fiyat)}</span>` : ''}</div>`;
+            }).join('');
+
+            let klasorBtnHTML = "";
+            if (d.klasor && d.klasor.trim() !== "") {
+                klasorBtnHTML = `<button type="button" class="btn-folder" onclick="copyFolderPath(${jsStr(d.klasor)})">📁 Klasör Yolunu Kopyala</button>`;
+            }
+
+            let takipBtnHTML = "";
+            let gridColumns = "1fr";
+
+            if (d.bookingNo && String(d.bookingNo).trim() !== "") {
+                takipBtnHTML = `<button type="button" class="btn-track" onclick="trackBooking(${jsStr(d.bookingNo)})">🌍 Takip Et</button>`;
+                gridColumns = "1fr 1fr";
+            }
+
+            let pinClass = d.isPinned ? 'active' : '';
+            let cardPinClass = d.isPinned ? 'pinned' : '';
+
+            cardsHTML.push(`
+                <div class="card ${cardPinClass}" style="flex:1; display:flex; flex-direction:column;">
+                    <button class="pin-btn ${pinClass}" onclick="togglePin(${jsStr(d.id)})" aria-label="${d.isPinned ? 'Sabitlemeyi kaldır' : 'Başa tuttur'}" title="Başa Tuttur">📌</button>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div style="width: 90%;">
+                            <strong style="font-size:18px; color:#0f172a; display:flex; align-items:center; flex-wrap:wrap; gap:5px;">
+                                ${escapeHtml(d.musteri)}
+                                <span class="term-badge">${escapeHtml(d.teslimat || 'FOB')}</span>
+                                <span class="term-badge" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;">${escapeHtml(dolumStr)}</span>
+                            </strong>
+                            ${ozelHatirlaticiHTML}
+                            ${noteHTML}
+                            <div style="font-size:12px; color:#64748b; margin-top:8px;">PO: ${escapeHtml(d.siparisNo || '-')} | Booking: ${escapeHtml(d.bookingNo || '-')}</div>
+                            ${plakaGosterimi}
+                            ${gemiHTML}
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 10px;">
+                         <div class="product-line">${productHTML}</div>
+                         <span class="status-badge bg-${asamaClass}" style="margin-left: 10px; flex-shrink: 0;">${escapeHtml(d.asama || 'Üretimde')}</span>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 10px;">
+                        <span class="evrak-progress" style="color: ${e_color}; margin:0;">📄 Evrak: ${e_count} / ${e_total} Hazır</span>
+                        ${uretimUyariHTML}
+                    </div>
+
+                    ${progressBarHTML}
+                    ${nextTaskHTML}
+
+                    <button class="toggle-process-btn" aria-expanded="false" aria-controls="proc_${escapeHtml(d.id)}" onclick="const el = document.getElementById('proc_${escapeHtml(d.id)}'); const willShow = el.style.display === 'none'; el.style.display = willShow ? 'block' : 'none'; this.setAttribute('aria-expanded', willShow);">👁️ Tüm Görev Haritasını Göster / Gizle</button>
+
+                    <div id="proc_${escapeHtml(d.id)}" class="checklist-container" style="display:none; margin-top:10px;">
+                        <div class="checklist-grid">
+                            ${processHTML}
+                        </div>
+                    </div>
+
+                    <div style="margin-top: auto;">
+                        <div style="display: grid; grid-template-columns: ${gridColumns}; gap: 10px; margin-top: 10px;">
+                            <button class="btn-mail" onclick="openEmailWizard(${jsStr(d.id)})">✉️ E-Posta</button>
+                            ${takipBtnHTML}
+                        </div>
+                        ${klasorBtnHTML}
+
+                        <div style="margin-top:15px; border-top:1px solid #e2e8f0; padding-top:15px; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:11px; color:#94a3b8; font-weight:bold;">📍 ${escapeHtml(d.liman)} | 🌍 ${escapeHtml(d.ulke)}</span>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <button onclick="deleteData(${jsStr(d.id)})" aria-label="Sil: ${escapeHtml(d.musteri)}" style="background:none; border:none; color:#ef4444; font-weight:bold; cursor:pointer; font-size:13px;" title="Sevkiyatı Sil">🗑️ Sil</button>
+                                <button onclick="editData(${jsStr(d.id)})" aria-label="Düzenle: ${escapeHtml(d.musteri)}" style="background:none; border:none; color:#0ea5e9; font-weight:bold; cursor:pointer; font-size:13px;">✏️ Düzenle</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`);
+        });
+
+        grid.innerHTML = cardsHTML.join('');
+    }
+
+    function openShipModal() {
+        renderShipList();
+        openOverlay('shipModalOverlay');
+    }
+
+    function renderShipList() {
+        const div = document.getElementById('shipListContainer');
+        if (allShips.length === 0) {
+            div.innerHTML = `<div style="padding:10px; color:#64748b; font-size:12px; text-align:center;">Henüz kayıtlı gemi yok.</div>`;
+            return;
+        }
+        div.innerHTML = allShips.map(s => `
+            <div class="ship-list-item">
+                <div>
+                    <strong style="color:#0f172a; font-size:13px;">🚢 ${escapeHtml(s.ad)}</strong> <span class="term-badge">${escapeHtml(s.liman)}</span><br>
+                    <span style="font-size:11px; color:#64748b;">Cut-Off: ${formatDateStr(s.cut)} | ETD: ${formatDateStr(s.etd)} | ETA: ${formatDateStr(s.eta)}</span>
+                </div>
+                <button onclick="deleteShip(${jsVal(s.id)})" aria-label="Sil: ${escapeHtml(s.ad)}" style="background:#ef4444; color:white; border:none; border-radius:6px; padding:5px 10px; cursor:pointer; font-weight:bold; font-size:11px;">Sil</button>
+            </div>
+        `).join('');
+    }
+
+    async function saveShip(e) {
+        e.preventDefault();
+        const btn = document.getElementById('saveShipBtn');
+        btn.innerText = "Ekleniyor ⏳"; btn.disabled = true;
+
+        const payload = {
+            ad: document.getElementById('s_ad').value,
+            ilk_giris: document.getElementById('s_ilk').value,
+            cut_off: document.getElementById('s_cut').value,
+            vgm: document.getElementById('s_vgm').value,
+            eta: document.getElementById('s_eta').value || null,
+            etd: document.getElementById('s_etd').value || null,
+            liman: document.getElementById('s_liman').value
+        };
+
+        try {
+            const { data, error } = await db.from('gemiler').insert(payload).select().single();
+            if (error) throw error;
+
+            allShips.push(mapGemiFromDb(data));
+            renderShipList();
+            populateShipDropdown();
+            document.getElementById('shipAddForm').reset();
+        } catch(err) {
+            handleSyncError(err, "Gemi kaydedilemedi.");
+        } finally {
+            btn.innerText = "Kaydet ve Listeye Ekle"; btn.disabled = false;
+        }
+    }
+
+    async function deleteShip(id) {
+        if(!confirm("Bu gemiyi ana listeden silmek istediğinize emin misiniz? (Mevcut sevkiyatlar etkilenmez)")) return;
+        allShips = allShips.filter(s => s.id !== id);
+        renderShipList();
+        populateShipDropdown();
+        try {
+            const { error } = await db.from('gemiler').delete().eq('id', id);
+            if (error) throw error;
+        } catch(err) {
+            handleSyncError(err, "Gemi silinemedi.");
+        }
+    }
+
+    function populateShipDropdown(selectedShipJson) {
+        const liman = document.getElementById('f_liman').value;
+        const select = document.getElementById('f_gemi_secim');
+        
+        let selectedShipAd = "";
+        if (selectedShipJson && String(selectedShipJson).trim() !== "") {
+            try { selectedShipAd = JSON.parse(selectedShipJson).ad; } catch(e) {}
+        }
+
+        const options = ['<option value="">-- Gemi Seçilmedi --</option>'];
+        allShips.filter(s => s.liman === liman).forEach(s => {
+            options.push(`<option value="${escapeHtml(JSON.stringify(s))}" ${s.ad === selectedShipAd ? 'selected' : ''}>${escapeHtml(s.ad)} (Cut-Off: ${formatDateStr(s.cut)})</option>`);
+        });
+        select.innerHTML = options.join('');
+        
+        selectShipFromDropdown();
+    }
+
+    function selectShipFromDropdown() {
+        const select = document.getElementById('f_gemi_secim');
+        const hiddenInput = document.getElementById('f_gemi_gizli');
+        const preview = document.getElementById('shipPreviewContainer');
+        
+        if (select.value === "") {
+            hiddenInput.value = "";
+            preview.style.display = "none";
+        } else {
+            hiddenInput.value = select.value;
+            const s = JSON.parse(select.value);
+            preview.style.display = "block";
+            preview.innerHTML = `
+                <div style="font-size:11px; background:#e0e7ff; padding:10px; border-radius:6px; border:1px solid #c7d2fe;">
+                    <strong>🚢 ${escapeHtml(s.ad)}</strong><br>
+                    İlk: ${formatDateStr(s.ilk)} | Cut: ${formatDateStr(s.cut)} | VGM: ${formatDateStr(s.vgm, true)} | ETD: ${formatDateStr(s.etd)} | ETA: ${formatDateStr(s.eta)}
+                </div>
+            `;
+        }
+    }
+
+    function handleLimanChange() {
+        const teslimatSelect = document.getElementById('f_teslimat');
+        const limanSelect = document.getElementById('f_liman');
+        
+        let currentLiman = limanSelect.value;
+        const teslimat = teslimatSelect.value;
+
+        if (teslimat === 'EXW') {
+            if(limanSelect.options.length > 1) {
+                limanSelect.innerHTML = '<option value="İzmir">İzmir</option>';
+            }
+        } else {
+            if(limanSelect.options.length === 1) {
+                limanSelect.innerHTML = '<option value="Antalya">Antalya</option><option value="İzmir">İzmir</option>';
+                if(currentLiman === 'Antalya' || currentLiman === 'İzmir') limanSelect.value = currentLiman;
+            }
+        }
+
+        const liman = limanSelect.value;
+        const dolum = document.getElementById('f_dolum').value;
+        
+        const btnSolon = document.getElementById('btnSolon');
+        if(liman === "Antalya" && dolum === "Fabrika Dolum") btnSolon.style.display = "block";
+        else btnSolon.style.display = "none";
+
+        const currentChecked = Array.from(document.querySelectorAll('.step-chk:checked')).map(x => x.value);
+        const currentEvrak = Array.from(document.querySelectorAll('.evrak-chk:checked')).map(x => x.value);
+        
+        populateShipDropdown(); 
+        buildChecklistUI(currentChecked, liman, teslimat, dolum, currentEvrak);
+        
+        document.getElementById('f_asama').value = calculateStage(currentChecked, dolum);
+    }
+
+    function buildChecklistUI(checkedItems, liman, teslimat, dolum, evrakItems = []) {
+        const activeSteps = getStepsForLiman(liman, teslimat, dolum);
+        const grid = document.getElementById('checklistGrid');
+        
+        grid.innerHTML = activeSteps.map((s, index) => {
+            const isChecked = checkedItems.includes(s.id);
+            const isEnabled = index === 0 ? true : checkedItems.includes(activeSteps[index-1].id);
+            const labelClass = isEnabled ? 'unlocked' : 'locked';
+            
+            return `
+                <label class="step-label ${labelClass}">
+                    <input type="checkbox" value="${s.id}" data-index="${index}" class="step-chk" 
+                        ${isChecked ? 'checked' : ''} 
+                        ${isEnabled ? '' : 'disabled'}
+                        onchange="handleChecklistChange(${index}, '${liman}', '${teslimat}', '${dolum}')"> 
+                    ${s.label}
+                </label>
+            `;
+        }).join('');
+
+        const eGrid = document.getElementById('evrakGrid');
+        eGrid.innerHTML = allEvraklarDef.map((e) => {
+            const isChecked = evrakItems.includes(e.id);
+            return `
+                <label class="evrak-label">
+                    <input type="checkbox" value="${e.id}" class="evrak-chk" ${isChecked ? 'checked' : ''}> 
+                    ${e.label}
+                </label>
+            `;
+        }).join('');
+    }
+
+    function autoTickEvrak(id) {
+        let chk = document.querySelector(`.evrak-chk[value='${id}']`);
+        if(chk && !chk.checked) {
+            chk.checked = true;
+            chk.parentElement.style.backgroundColor = '#dcfce7'; 
+            chk.parentElement.style.borderColor = '#059669'; 
+            setTimeout(()=> { chk.parentElement.style.backgroundColor = 'white'; chk.parentElement.style.borderColor = '#cbd5e1'; }, 1500);
+        }
+    }
+
+    function handleChecklistChange(changedIndex, liman, teslimat, dolum) {
+        const checkboxes = document.querySelectorAll('.step-chk');
+        const labels = document.querySelectorAll('.step-label');
+        const isChecked = checkboxes[changedIndex].checked;
+        const stepId = checkboxes[changedIndex].value;
+
+        if (stepId === 's1' || stepId === 'l1') {
+            if (isChecked) autoTickEvrak('e_proforma');
+        }
+        else if (stepId === 's4' || stepId === 'l4') {
+            if(isChecked) {
+                if(!confirm("Sevkiyatın gönderdiği çeki listesini aldınız mı?")) { checkboxes[changedIndex].checked = false; return; }
+                autoTickEvrak('e_fab_ceki');
+            }
+        }
+        else if (stepId === 's5' || stepId === 'l5') {
+            if (isChecked) alert("⚠️ DİKKAT: Commercial Invoice hazırlarken ön ödeme alındığı için toplam tutardan ön ödeme miktarını düşerek hazırlamayı unutmayın!");
+        }
+        else if (stepId === 's7' || stepId === 'l7') {
+            if (isChecked) alert("💡 HATIRLATMA: Lokal ücretleri sormayı ve acente ile pazarlık etmeyi unutmayın!");
+        }
+        else if (stepId === 's9' || stepId === 'l8') {
+            if (isChecked) { }
+        }
+        else if (stepId === 's10' || stepId === 'l_solon') {
+            if (isChecked) alert("💡 HATIRLATMA: Plakayı Antalya Liman sistemine (Solon) kaydettiğinizden emin olun.");
+        }
+        
+        else if (stepId === 'l12' && isChecked) {
+            alert("💡 HATIRLATMA: Gümrükçüye çeki listesini gönderip haber verin.");
+        }
+        else if (stepId === 'l12_izmir' && isChecked) {
+            alert("💡 HATIRLATMA: Gözetmenlik işlemleri için Doğru Liman Hizmetleri'ne (Harbi Kurt) haber vermeyi unutmayın.");
+        }
+        else if (stepId === 'l13' && isChecked) {
+            if(!confirm("İlaçlama firmasına haber verdiniz mi?")) { checkboxes[changedIndex].checked = false; return; }
+        }
+        else if (stepId === 'l14' && isChecked) {
+            if(!confirm("Gümrükçüden konteynerlerin yüklendiğine dair haber geldi mi?")) { checkboxes[changedIndex].checked = false; return; }
+        }
+        else if (stepId === 'l15' && isChecked) {
+            if(!confirm("Nihai Çeki Listesini düzenleyip, Muhasebeden onaylı resmi TR Faturayı teslim aldınız mı?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_nihai_ceki');
+            autoTickEvrak('e_tr_fatura');
+        }
+        else if (stepId === 'l16' && isChecked) {
+            if(!confirm("Loading Note ve VGM oluşturup, çeki listesi ile birlikte acenteye gönderdiniz mi?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_loading');
+        }
+        else if (stepId === 'l17' && isChecked) {
+            if(!confirm("TR Fatura ve Nihai Çeki listesini beyanname hazırlaması için gümrükçüye gönderdiniz mi?")) { checkboxes[changedIndex].checked = false; return; }
+        }
+        else if (stepId === 'l18' && isChecked) {
+            if(!confirm("Gümrükçüden beyanname geldi mi?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_beyan');
+        }
+        else if (stepId === 'l19' && isChecked) {
+            if(!confirm("Gelen beyannameyi acenteye gönderdiniz mi?")) { checkboxes[changedIndex].checked = false; return; }
+        }
+        else if (stepId === 'l20' && isChecked) {
+            if(!confirm("Acenteden Draft B/L geldi mi ve onayladınız mı? (Peşin ise Seawaybill, bekliyorsa Original)")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_draft_bl');
+        }
+        else if (stepId === 'l21' && isChecked) {
+            if(!confirm("Nihai Seawaybill / Original evrağı elinize ulaştı mı?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_bl');
+        }
+        else if (stepId === 'l22' && isChecked) {
+            if(!confirm("Nihai Commercial Invoice ve Packing List hazırladınız mı?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_ci');
+            autoTickEvrak('e_pl');
+        }
+        else if (stepId === 'l23' && isChecked) {
+            if(!confirm("Dolaşım/Menşe belgesini hazırladınız mı?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_dolasim');
+        }
+        else if (stepId === 'l25' && isChecked) {
+            if(!confirm("Tüm orijinal evrakları DHL ile alıcıya gönderdiniz mi?")) { checkboxes[changedIndex].checked = false; return; }
+            alert("🎉 TEBRİKLER! Bu operasyonu başarıyla tamamladınız.");
+        }
+
+        else if (stepId === 's12' && isChecked) {
+            if (teslimat === 'EXW') {
+                alert("💡 HATIRLATMA: Gümrükçüye yükleme bilgilerini mail atmayı unutmayın!");
+            } else {
+                alert("💡 HATIRLATMA: Gümrükçüden ihraç kayıt numarası istemeyi unutmayın!");
+            }
+        }
+        else if (stepId === 's13' && isChecked) {
+            if(!confirm("İlaçlama firmasına haber verdiniz mi?")) { checkboxes[changedIndex].checked = false; return; }
+        }
+        else if (stepId === 's14' && isChecked) {
+            if(!confirm("Yüklemenin bitmesini bekleyip sevkiyattan net tonajlı kesin çeki listesi ve irsaliye taslağını teslim aldınız mı?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_kantar');
+        }
+        else if (stepId === 's15' && isChecked) {
+            if(!confirm("Nihai Çeki Listesini düzenleyip, Muhasebeden onaylı resmi TR Faturayı teslim aldınız mı?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_nihai_ceki');
+            autoTickEvrak('e_tr_fatura');
+        }
+        else if (stepId === 's16' && isChecked) {
+            if(!confirm("TR Fatura ve Nihai Çeki listesini gümrükçüye gönderdiniz mi?")) { checkboxes[changedIndex].checked = false; return; }
+        }
+        else if (stepId === 's17' && isChecked) {
+            if(!confirm("Loading Note oluşturup, çeki listesi ile birlikte acenteye gönderdiniz mi?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_loading');
+        }
+        else if (stepId === 's18' && isChecked) {
+            if(!confirm("Gümrükçüden beyanname geldi mi?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_beyan');
+        }
+        else if (stepId === 's19' && isChecked) {
+            if(!confirm("Gelen beyannameyi acenteye gönderdiniz mi?")) { checkboxes[changedIndex].checked = false; return; }
+        }
+        else if (stepId === 's20' && isChecked) {
+            if(!confirm("Acenteden Draft B/L geldi mi ve onayladınız mı? (Peşin ise Seawaybill, bekliyorsa Original)")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_draft_bl');
+        }
+        else if (stepId === 's21' && isChecked) {
+            if(!confirm("Nihai Seawaybill / Original evrağı elinize ulaştı mı?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_bl');
+        }
+        else if (stepId === 's22' && isChecked) {
+            if(!confirm("Nihai Commercial Invoice ve Packing List hazırladınız mı?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_ci');
+            autoTickEvrak('e_pl');
+        }
+        else if (stepId === 's23' && isChecked) {
+            if(!confirm("Dolaşım/Menşe belgesini hazırladınız mı?")) { checkboxes[changedIndex].checked = false; return; }
+            autoTickEvrak('e_dolasim');
+        }
+        else if (stepId === 's24' && isChecked) {
+            if(!confirm("Hazırlanan dolaşım belgesini alıcıya gönderdiniz mi?")) { checkboxes[changedIndex].checked = false; return; }
+        }
+        else if (stepId === 's25' && isChecked) {
+            if(!confirm("Tüm orijinal evrakları DHL ile alıcıya gönderdiniz mi?")) { checkboxes[changedIndex].checked = false; return; }
+            alert("🎉 TEBRİKLER! Bu operasyonu başarıyla tamamladınız.");
+        }
+
+        if (!isChecked) {
+            for (let i = changedIndex + 1; i < checkboxes.length; i++) {
+                checkboxes[i].checked = false; checkboxes[i].disabled = true;
+                labels[i].classList.remove('unlocked'); labels[i].classList.add('locked');
+            }
+        } else {
+            if (changedIndex + 1 < checkboxes.length) {
+                checkboxes[changedIndex + 1].disabled = false;
+                labels[changedIndex + 1].classList.remove('locked'); labels[changedIndex + 1].classList.add('unlocked');
+            }
+        }
+
+        const checkedArray = Array.from(document.querySelectorAll('.step-chk:checked')).map(x => x.value);
+        let currentDolum = document.getElementById('f_dolum').value;
+        document.getElementById('f_asama').value = calculateStage(checkedArray, currentDolum);
+    }
+
+    function calculateStage(list, dolum) {
+        if (!list || list.length === 0) return "Üretimde";
+        if(dolum === "Liman Dolum") {
+            if (list.includes('l25')) return "Tamamlandı";
+            if (list.includes('l20')) return "Yolda"; 
+            if (list.includes('l17')) return "Gümrükte"; 
+            if (list.includes('l14')) return "Limanda"; 
+            if (list.includes('l8')) return "İç Nakliye"; 
+            if (list.includes('l6')) return "Booking Bekleniyor"; 
+            return "Üretimde";
+        } else {
+            if (list.includes('s25')) return "Tamamlandı";
+            if (list.includes('s20')) return "Yolda"; 
+            if (list.includes('s16')) return "Gümrükte"; 
+            if (list.includes('s14')) return "Limanda"; 
+            if (list.includes('s9') || list.includes('s11')) return "İç Nakliye"; 
+            if (list.includes('s6')) return "Booking Bekleniyor"; 
+            return "Üretimde";
+        }
+    }
+
+    function openEmailWizard(id) {
+        selectedShipment = allData.find(x => x.id === id);
+        let buttonsHTML = "";
+        let dolum = selectedShipment.dolum || "Fabrika Dolum";
+        let teslimat = selectedShipment.teslimat || "FOB";
+
+        buttonsHTML += `<button class="btn-mail" style="background:#0ea5e9" onclick="generateEmail('ilk_mail')">1. Acenteye İlk Mail (Booking)</button>`;
+
+        if(dolum === "Liman Dolum") {
+            if(selectedShipment.liman === "Antalya") {
+                buttonsHTML += `<button class="btn-mail" style="background:#8b5cf6" onclick="generateEmail('ant_gumruk_liman')">2. Gümrükçüye (ACR) Haber Maili</button>`;
+                buttonsHTML += `<button class="btn-mail" style="background:#f59e0b" onclick="generateEmail('ant_ilaclama_liman')">3. İlaçlamacıya (Fümser) Haber Maili</button>`;
+            } else if(selectedShipment.liman === "İzmir") {
+                buttonsHTML += `<button class="btn-mail" style="background:#8b5cf6" onclick="generateEmail('izm_gumruk_liman')">2. Gümrükçüye (ACR) Haber Maili</button>`;
+                buttonsHTML += `<button class="btn-mail" style="background:#3b82f6" onclick="generateEmail('izm_gozetmen_liman')">3. Gözetmenlik & İlaçlama (Harbi Kurt)</button>`;
+            }
+        } else {
+            if (teslimat === 'EXW') {
+                buttonsHTML += `<button class="btn-mail" style="background:#8b5cf6" onclick="generateEmail('exw_gumruk_bilgi')">2. Gümrükçüye Yükleme Bilgisi (EXW)</button>`;
+            } else if(selectedShipment.liman === "Antalya") {
+                buttonsHTML += `<button class="btn-mail" style="background:#8b5cf6" onclick="generateEmail('ihrac_kayit')">2. Gümrükçüye İhraç Kayıt Talebi</button>`;
+            }
+            
+            let ilaclamaSirketi = selectedShipment.liman === "Antalya" ? "Fümser" : "Harbi Kurt";
+            buttonsHTML += `<button class="btn-mail" style="background:#f59e0b; color: #fff;" onclick="generateEmail('ilaclama')">3. İlaçlama Firmasına Bilgi (${ilaclamaSirketi})</button>`;
+        }
+        
+        buttonsHTML += `<button class="btn-mail" style="background:#10b981" onclick="generateEmail('mensei_taslak')">4. Menşe/Dolaşım Taslağı Talebi</button>`;
+        
+        document.getElementById('emailButtonsContainer').innerHTML = buttonsHTML;
+        openOverlay('emailOverlay');
+    }
+
+    function generateEmail(type) {
+        try {
+            const s = selectedShipment;
+            if(!s) { alert("Sevkiyat verisi bulunamadı!"); return; }
+
+            let to = "", cc = "", subject = "", body = "";
+            
+            let musteri = s.musteri ? String(s.musteri).toUpperCase() : "MUSTERI";
+            let booking = s.bookingNo ? String(s.bookingNo).toUpperCase() : "BOOKING-NO";
+            let proforma = s.siparisNo ? String(s.siparisNo).toUpperCase() : "PO-NO";
+            
+            let k_list = Array.isArray(s.konteynerler) ? s.konteynerler : [];
+            let k_sayi = k_list.length > 0 ? k_list.length : 1;
+            
+            let liman = s.liman ? String(s.liman).toUpperCase() : "LIMAN";
+            let varis = s.ulke ? String(s.ulke).toUpperCase() : "VARIS";
+            let plaka = s.plaka ? String(s.plaka).toUpperCase() : "[PLAKA]";
+            
+            let k_nolar = "KONTEYNER-NO";
+            if (k_list.length > 0) {
+                let nolar = k_list.map(k => k.no).filter(n => n !== null && n !== undefined && String(n).trim() !== "");
+                if (nolar.length > 0) k_nolar = nolar.join(" / ");
+            }
+
+            subject = `ONUR MERMER-${musteri} // ${booking} // ${k_nolar} // ${k_sayi}X20'DC // ${liman}-${varis}`;
+
+            if(type === 'ilk_mail') {
+                to = ""; 
+                cc = "operation@onurmarble.com;operasyon@onurmarble.com";
+                let onayMetni = s.teslimat === 'FOB' ? 'FOB onayı' : 'booking / navlun onayı';
+                body = `Merhabalar [Acente Yetkilisi İsim],\n\n${musteri} adına yapılacak yükleme ile ilgili olarak tarafınıza ${onayMetni} ulaştı mı?\n\nYüklememiz ${liman} çıkışlı olacaktır.\n\nBilgilerinizi rica ederim.\n\nSaygılarımla,`;
+            }
+            else if (type === 'exw_gumruk_bilgi') {
+                alert("Bu mail taslağını henüz oluşturmadınız. Lütfen taslağı iletiniz.");
+                return;
+            }
+            else if(type === 'ihrac_kayit') {
+                to = "info@acrgumruk.com;aliye@acrgumruk.com"; 
+                cc = "operation@onurmarble.com;operasyon@onurmarble.com;ozteke@acrgumruk.com;fatih@acrgumruk.com;ozipek@acrgumruk.com";
+                body = `Merhabalar,\n\n${k_sayi} Cntr ${liman} dış dolum yüklememiz için bilgiler aşağıdaki gibidir.\n\nBooking No: ${booking}\n\nCntr No : ${k_nolar}\n\nİhraç Kayıt No rica ederim.\n\nTeşekkürler, iyi çalışmalar`;
+            }
+            else if(type === 'ilaclama') {
+                cc = "operation@onurmarble.com;operasyon@onurmarble.com";
+                if (s.liman === "Antalya") {
+                    to = "fumser@hotmail.com";
+                    body = `Merhabalar,\n\n${k_sayi} Cntr ${liman} dış dolum yüklememiz için bilgiler aşağıdaki gibidir.\n\nBooking No: ${booking}\n\nCntr No : ${k_nolar}\n\nİlaçlama olarak Sülfür Florür uygulayacağız.\n\nTeşekkürler, iyi çalışmalar`;
+                } else {
+                    let trh = prompt("Konteynerin alınacağı tarihi girin:", "");
+                    if(trh === null) return;
+                    to = "info@harbikurtliman.com.tr;operasyon@harbikurtliman.com.tr";
+                    body = `Merhabalar,\n\n${k_sayi} Konteyner ${trh || '[TARIH]'} ${liman} Alsancak Limanı FABRİKA DOLUM yüklememiz için bilgiler aşağıdaki gibidir.\n\nİlaçlama konusunda yardımlarınız ricadır.\n\nARAÇ BİLGİSİ\n\nPlAKA:${plaka}\nDORSE:[DORSE PLAKASI GİRİNİZ]\n\nŞOFÖR ADI SOYADI : [ŞOFÖR ADI GİRİNİZ]\nTLF:[TELEFON GİRİNİZ]\n\nCNTR NO : ${k_nolar}\nBOOKING NO : ${booking}\n\nTeşekkürler, iyi çalışmalar`;
+                }
+            }
+            else if(type === 'ant_gumruk_liman') {
+                to = "info@acrgumruk.com;aliye@acrgumruk.com";
+                cc = "operation@onurmarble.com;operasyon@onurmarble.com;ozteke@acrgumruk.com;ozipek@acrgumruk.com;fatih@acrgumruk.com";
+                subject = `ONUR MERMER MAD.TUR.TAR. - ${k_sayi}x20"DC - ANTALYA - ${varis} -CNEE : ${musteri} - ${booking}`;
+                let trh = prompt("Yükün limana gidiş tarihini girin:", "");
+                if(trh === null) return;
+                body = `Merhabalar,\n\n${k_sayi}*20 DC Antalya Liman dolum için Bilgiler Aşağıdaki gibidir.\n\nBOOKING : ${booking}\n${k_sayi}*20DC\n${trh || '[TARIH]'} LIMAN DOLUM SABAH POSTASI ONAYLIDIR .\n\nListeler ektedir.\n\n(Lütfen buraya acenteden gelen listeyi yapıştırınız)\n\nTeşekkürler, iyi çalışmalar.`;
+            }
+            else if(type === 'izm_gumruk_liman') {
+                let tarih = prompt("Yükün limana gidiş tarihini girin (Örn: 10.03.2026):", "");
+                if(tarih === null) return;
+                let sofor = prompt("Şoför Adı Soyadı:", "");
+                if(sofor === null) return;
+                let tel = prompt("Şoför Telefon Numarası:", "");
+                if(tel === null) return;
+                to = "info@acrgumruk.com;aliye@acrgumruk.com";
+                cc = "operation@onurmarble.com;operasyon@onurmarble.com;ozteke@acrgumruk.com;ozipek@acrgumruk.com;fatih@acrgumruk.com";
+                subject = `ONUR - PO ${proforma} ${k_sayi}x20' ${s.teslimat || 'FOB'} ALIAGA . //`;
+                body = `Merhabalar,\n\nYeni İzmir yüklememize ait bilgiler aşağıdaki gibidir.\n\n${k_sayi}*20DC ${tarih || '[TARİH]'} TCE EGE LIMAN DOLUM yüklememiz için Bilgiler aşağıdaki gibidir.\n\nBeyanname evrakları hazır olunca ileteceğim.\n\nAraç/Dorse Plaka: ${plaka}\nŞoför: ${sofor || '[AD SOYAD]'}\nŞoför Tel: ${tel || '[TEL]'}\n\n(Lütfen buraya acenteden gelen gemi bilgilerini yapıştırınız)\n\nTeşekkürler, iyi çalışmalar.`;
+            }
+            else if(type === 'izm_gozetmen_liman') {
+                let tarih = prompt("Yükün limana gidiş tarihini girin:", "");
+                if(tarih === null) return;
+                let sofor = prompt("Şoför Adı Soyadı:", "");
+                if(sofor === null) return;
+                let tel = prompt("Şoför Telefon Numarası:", "");
+                if(tel === null) return;
+                to = "operasyon@dogruliman.com.tr;info@dogruliman.com.tr";
+                cc = "operation@onurmarble.com;operasyon@onurmarble.com";
+                subject = `ONUR - PO ${proforma} ${k_sayi}x20' ${s.teslimat || 'FOB'} ALIAGA . //`;
+                body = `Merhabalar,\n\nYeni İzmir yüklememize ait bilgiler aşağıdaki gibidir.\n\n${k_sayi}*20DC ${tarih || '[TARİH]'} TCE EGE LIMAN DOLUM yüklememiz için Bilgiler aşağıdaki gibidir.\nListe ektedir.\nLashing ve ilaçlama konusunda yardımlarınız ricadır.\n\nAraç/Dorse Plaka: ${plaka}\nŞoför: ${sofor || '[AD SOYAD]'}\nTel: ${tel || '[TEL]'}\n\n(Lütfen buraya acenteden gelen gemi bilgilerini yapıştırınız)\n\nTeşekkürler, iyi çalışmalar.`;
+            }
+            else if(type === 'ant_ilaclama_liman') {
+                let tarih = prompt("Yükleme tarihini girin (Örn: 30.07):", "");
+                if(tarih === null) return;
+                let posta = confirm("Sabah postası mı? (Tamam: Sabah, İptal: Öğle/Diğer)") ? "SABAH POSTASI" : "ÖĞLE POSTASI";
+                let gemi_ad = "[GEMI ADI]";
+                try {
+                    if(s.gemi && typeof s.gemi === 'object') gemi_ad = s.gemi.ad || "[GEMI ADI]";
+                    else if (s.gemi && typeof s.gemi === 'string') gemi_ad = JSON.parse(s.gemi).ad || "[GEMI ADI]";
+                } catch(e){}
+
+                to = "fumser@hotmail.com";
+                cc = "operation@onurmarble.com;operasyon@onurmarble.com";
+                subject = `${musteri} - ONUR MERMER - ${k_sayi}x20"DC - - ANTALYA - ${varis} - ${booking}`;
+                body = `Merhabalar,\n\n${k_sayi}*20 DC Antalya Liman dolum için Bilgiler Aşağıdaki gibidir.\nListeler Ektedir.\n\nİlaçlama olarak AF Uygulayacağız.\n\nBOOKING : ${booking}\n${k_sayi}*20DC\n${tarih || '[TARIH]'} LIMAN DOLUM ${posta} ONAYLIDIR\n\n${gemi_ad}\n/ ANTALYA / ${varis} /\n\nTeşekkürler, İyi Çalışmalar.`;
+            }
+            else if(type === 'mensei_taslak') {
+                let menseNo = prompt("Menşe/Dolaşım Belge No:", "");
+                if(menseNo === null) return;
+                to = "muhasebe@acrgumruk.com"; cc = "info@acrgumruk.com;operasyon@onurmarble.com";
+                subject = `${musteri} // ${proforma} // ${menseNo || '[NO]'}`;
+                body = `Merhabalar,\n\nMenşei No : ${menseNo || '[NO]'}\n\nTaslak rica ederim.\n\nTeşekkürler, iyi çalışmalar.`;
+            }
+            
+            // 1. Outlook 2016 Satır Atlama Düzeltmesi
+            let safeBody = body.replace(/\n/g, '\r\n');
+            const mailtoUrl = `mailto:${to}?cc=${cc}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(safeBody)}`;
+            
+            // 2. Pano (Clipboard) Kopyalaması
+            let clipboardText = `KİME: ${to}\nCC: ${cc}\nKONU: ${subject}\n\n${body}`;
+            navigator.clipboard.writeText(clipboardText).then(() => {
+                const toast = document.createElement('div');
+                toast.setAttribute('role', 'status');
+                toast.setAttribute('aria-live', 'polite');
+                toast.innerText = "✉️ Mail metni hafızaya kopyalandı! (Outlook hata verirse CTRL+V yapın)";
+                toast.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#0ea5e9; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:9999; box-shadow:0 4px 6px rgba(0,0,0,0.1); animation: fadein 0.3s;";
+                document.body.appendChild(toast);
+                setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = '0.3s'; setTimeout(()=>toast.remove(), 300); }, 4000);
+            }).catch(err => console.log("Kopyalama hatası", err));
+
+            // 3. Maili Açmayı Dene
+            const link = document.createElement('a');
+            link.href = mailtoUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            closeOverlay('emailOverlay');
+
+        } catch (err) {
+            console.error("Mail oluşturma hatası:", err);
+            alert("Mail oluşturulurken teknik bir hata oluştu. F12 ile konsola bakınız.");
+        }
+    }
+
+    function openModal() {
+        document.getElementById('modalTitle').innerText = "Yeni Sevkiyat Kaydı";
+        document.getElementById('editId').value = '';
+        document.getElementById('shipmentForm').reset();
+        document.getElementById('f_asama').value = 'Üretimde';
+        currentContainers = [];
+        currentProducts = [{cins:'', olcu:'', fiyat: ''}];
+        currentNotes = [];
+        
+        document.getElementById('f_teslimat').value = 'FOB';
+        document.getElementById('f_dolum').value = 'Fabrika Dolum';
+        document.getElementById('f_liman').innerHTML = '<option value="Antalya">Antalya</option><option value="İzmir">İzmir</option>';
+        document.getElementById('f_liman').value = 'Antalya';
+
+        populateShipDropdown(); 
+        updateContainerUI();
+        updateProductUI();
+        updateNoteUI();
+        
+        const liman = document.getElementById('f_liman').value;
+        const teslimat = document.getElementById('f_teslimat').value;
+        const dolum = document.getElementById('f_dolum').value;
+        
+        const btnSolon = document.getElementById('btnSolon');
+        if(liman === "Antalya" && dolum === "Fabrika Dolum") btnSolon.style.display = "block";
+        else btnSolon.style.display = "none";
+        
+        buildChecklistUI([], liman, teslimat, dolum, []);
+
+        openOverlay('modalOverlay');
+    }
+
+    function editData(id) {
+        const d = allData.find(x => x.id === id);
+        let liman = d.liman || "Antalya";
+        document.getElementById('modalTitle').innerText = "Sevkiyatı Düzenle";
+        document.getElementById('editId').value = d.id;
+        document.getElementById('f_musteri').value = d.musteri || "";
+        document.getElementById('f_proforma').value = d.siparisNo || "";
+        document.getElementById('f_uretimTarihi').value = d.uretimTarihi || "";
+        document.getElementById('f_booking').value = d.bookingNo || "";
+        
+        document.getElementById('f_teslimat').value = d.teslimat || "FOB";
+        document.getElementById('f_dolum').value = d.dolum || "Fabrika Dolum";
+        
+        if (d.teslimat === 'EXW') {
+            document.getElementById('f_liman').innerHTML = '<option value="İzmir">İzmir</option>';
+            document.getElementById('f_liman').value = 'İzmir';
+            liman = 'İzmir';
+        } else {
+            document.getElementById('f_liman').innerHTML = '<option value="Antalya">Antalya</option><option value="İzmir">İzmir</option>';
+            document.getElementById('f_liman').value = liman;
+        }
+
+        document.getElementById('f_ulke').value = d.ulke || "";
+        document.getElementById('f_plaka').value = d.plaka || "";
+        document.getElementById('f_klasor').value = d.klasor || "";
+        
+        const checkedArray = d.checklist || [];
+        document.getElementById('f_asama').value = calculateStage(checkedArray, d.dolum || "Fabrika Dolum");
+
+        if (d.hatirlatici) {
+            document.getElementById('f_hatirlatici_tarih').value = d.hatirlatici.tarih || "";
+            document.getElementById('f_hatirlatici_metin').value = d.hatirlatici.metin || "";
+        }
+
+        populateShipDropdown(d.gemi ? JSON.stringify(d.gemi) : "");
+        currentContainers = d.konteynerler ? JSON.parse(JSON.stringify(d.konteynerler)) : [];
+        
+        try { currentProducts = JSON.parse(d.urun); if(!Array.isArray(currentProducts)) throw 'e'; } 
+        catch(e) { currentProducts = [{cins: d.urun || '', olcu: d.olcu || '', fiyat: ''}]; }
+        
+        try { currentNotes = JSON.parse(d.notlar); if(!Array.isArray(currentNotes)) throw 'e'; } 
+        catch(e) { currentNotes = d.notlar ? [{tarih: 'Eski Not', metin: d.notlar}] : []; }
+        
+        updateContainerUI();
+        updateProductUI();
+        updateNoteUI();
+        
+        const btnSolon = document.getElementById('btnSolon');
+        if(liman === "Antalya" && document.getElementById('f_dolum').value === "Fabrika Dolum") btnSolon.style.display = "block";
+        else btnSolon.style.display = "none";
+        
+        buildChecklistUI(d.checklist || [], liman, document.getElementById('f_teslimat').value, document.getElementById('f_dolum').value, d.evraklar || []);
+
+        openOverlay('modalOverlay');
+    }
+
+    function updateProductUI() {
+        const div = document.getElementById('productList');
+        div.innerHTML = currentProducts.map((p, i) => `
+            <div style="display:flex; gap:10px; margin-bottom:8px;">
+                <label class="visually-hidden" for="prod_cins_${i}">Ürün Cinsi</label>
+                <input type="text" id="prod_cins_${i}" placeholder="Ürün Cinsi" value="${escapeHtml(p.cins)}" onchange="currentProducts[${i}].cins=this.value" style="flex:2;">
+                <label class="visually-hidden" for="prod_olcu_${i}">Ölçü</label>
+                <input type="text" id="prod_olcu_${i}" placeholder="Ölçü" value="${escapeHtml(p.olcu)}" onchange="currentProducts[${i}].olcu=this.value" style="flex:1;">
+                <label class="visually-hidden" for="prod_fiyat_${i}">Fiyat ($)</label>
+                <input type="number" id="prod_fiyat_${i}" step="any" placeholder="Fiyat ($)" value="${escapeHtml(p.fiyat || '')}" onchange="currentProducts[${i}].fiyat=this.value" style="flex:1;">
+                ${i > 0 ? `<button type="button" onclick="currentProducts.splice(${i},1); updateProductUI()" aria-label="Ürünü sil" style="background:#ef4444; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; padding: 0 15px;">X</button>` : `<div style="width: 44px;"></div>`}
+            </div>`).join('');
+    }
+    
+    function addProductRow() { currentProducts.push({cins:'', olcu:'', fiyat:''}); updateProductUI(); }
+
+    function updateNoteUI() {
+        const div = document.getElementById('noteList');
+        if(currentNotes.length === 0) { div.innerHTML = "<span style='color:#a16207; font-style:italic;'>Henüz not eklenmedi.</span>"; return; }
+        div.innerHTML = currentNotes.map((n, i) => `
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid #fef08a; padding-bottom:4px;">
+                <span><strong>${escapeHtml(n.tarih)} :</strong> ${escapeHtml(n.metin)}</span>
+                <button type="button" onclick="currentNotes.splice(${i},1); updateNoteUI()" aria-label="Notu sil" style="background:none; border:none; color:#ef4444; cursor:pointer; font-weight:bold;">X</button>
+            </div>`).join('');
+    }
+    
+    function addNote() {
+        const input = document.getElementById('f_yeni_not');
+        if(input.value.trim() === "") return;
+        const now = new Date();
+        const tStr = `${now.getDate().toString().padStart(2,'0')}.${(now.getMonth()+1).toString().padStart(2,'0')} ${now.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}`;
+        currentNotes.push({ tarih: tStr, metin: input.value.trim() });
+        input.value = "";
+        updateNoteUI();
+    }
+
+    function updateContainerUI() {
+        const div = document.getElementById('containerList');
+        div.innerHTML = currentContainers.map((k, i) => `
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <label class="visually-hidden" for="cont_no_${i}">Konteyner No</label>
+                <input type="text" id="cont_no_${i}" placeholder="Konteyner No" value="${escapeHtml(k.no)}" onchange="currentContainers[${i}].no=this.value" style="flex:1;">
+                <label class="visually-hidden" for="cont_seal_${i}">Mühür No</label>
+                <input type="text" id="cont_seal_${i}" placeholder="Mühür No" value="${escapeHtml(k.seal)}" onchange="currentContainers[${i}].seal=this.value" style="flex:1;">
+                <label class="visually-hidden" for="cont_weight_${i}">Kg / Kasa</label>
+                <input type="text" id="cont_weight_${i}" placeholder="Kg / Kasa" value="${escapeHtml(k.weight)}" onchange="currentContainers[${i}].weight=this.value" style="flex:1;">
+                <button type="button" onclick="currentContainers.splice(${i},1); updateContainerUI()" aria-label="Konteyneri sil" style="background:#ef4444; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; padding: 0 15px;">X</button>
+            </div>`).join('');
+    }
+    
+    function addContainerRow() { currentContainers.push({no:'', seal:'', weight:''}); updateContainerUI(); }
+    function closeModal() { closeOverlay('modalOverlay'); }
+
+    async function deleteData(id) {
+        if(!confirm("Bu sevkiyat kaydını tamamen silmek istediğinize emin misiniz?\n(Veritabanından da kalıcı olarak silinir!)")) return;
+
+        const prevData = allData;
+        allData = allData.filter(d => d.id !== id);
+        localStorage.setItem('onurMermerData_v6', JSON.stringify(allData));
+        render();
+        try {
+            const { error } = await db.from('sevkiyatlar').delete().eq('id', id);
+            if (error) throw error;
+        } catch(error) {
+            allData = prevData;
+            localStorage.setItem('onurMermerData_v6', JSON.stringify(allData));
+            render();
+            handleSyncError(error, "Sevkiyat silinemedi.");
+        }
+    }
+
+    async function saveData(e) {
+        e.preventDefault();
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.innerText = "Kaydediliyor ⏳"; saveBtn.disabled = true;
+
+        const checklist = Array.from(document.querySelectorAll('.step-chk:checked')).map(x => x.value);
+        const evraklist = Array.from(document.querySelectorAll('.evrak-chk:checked')).map(x => x.value);
+        const dolumVal = document.getElementById('f_dolum').value;
+        const otomatikAsama = calculateStage(checklist, dolumVal);
+
+        const gemiGizli = document.getElementById('f_gemi_gizli').value;
+        let gemiObj = null;
+        if (gemiGizli !== "") { try { gemiObj = JSON.parse(gemiGizli); } catch(e) {} }
+
+        const currentId = document.getElementById('editId').value;
+        let existingPin = false;
+        if (currentId) {
+            const exData = allData.find(d => d.id === currentId);
+            if (exData && exData.isPinned) existingPin = true;
+        }
+
+        const dbPayload = {
+            musteri: document.getElementById('f_musteri').value,
+            siparis_no: document.getElementById('f_proforma').value,
+            booking_no: document.getElementById('f_booking').value,
+            teslimat: document.getElementById('f_teslimat').value,
+            liman: document.getElementById('f_liman').value,
+            ulke: document.getElementById('f_ulke').value,
+            urunler: currentProducts,
+            konteynerler: currentContainers,
+            notlar: currentNotes,
+            uretim_tarihi: document.getElementById('f_uretimTarihi').value || null,
+            plaka: document.getElementById('f_plaka').value,
+            asama: otomatikAsama,
+            checklist: checklist,
+            evraklar: evraklist,
+            hatirlatici: { tarih: document.getElementById('f_hatirlatici_tarih').value, metin: document.getElementById('f_hatirlatici_metin').value },
+            klasor: document.getElementById('f_klasor').value,
+            gemi: gemiObj,
+            dolum: dolumVal,
+            is_pinned: existingPin
+        };
+
+        try {
+            let savedRow;
+            if (currentId) {
+                const { data, error } = await db.from('sevkiyatlar').update(dbPayload).eq('id', currentId).select().single();
+                if (error) throw error;
+                savedRow = data;
+            } else {
+                const { data, error } = await db.from('sevkiyatlar').insert({ id: crypto.randomUUID(), ...dbPayload }).select().single();
+                if (error) throw error;
+                savedRow = data;
+            }
+
+            const mapped = mapSevkiyatFromDb(savedRow);
+            const idx = allData.findIndex(d => d.id === mapped.id);
+            if (idx >= 0) allData[idx] = mapped; else allData.unshift(mapped);
+
+            localStorage.setItem('onurMermerData_v6', JSON.stringify(allData));
+            render();
+            closeModal();
+        } catch(error) {
+            handleSyncError(error, "Sevkiyat kaydedilemedi.");
+        } finally {
+            saveBtn.innerText = "Kaydet"; saveBtn.disabled = false;
+        }
+    }
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch((err) => console.error('Service worker kaydı başarısız:', err));
+        });
+    }
+</script>
+</body>
+</html>
