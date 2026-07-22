@@ -1,8 +1,8 @@
 // Her gün pg_cron tarafından tetiklenir.
 // Power Automate'in Supabase Storage'a attığı "antalya-gemi-programi.pdf" dosyasını
-// okur, MSC'nin gemi programı tablosunu ayrıştırır ve sadece DAHA ÖNCE
-// `gemiler` tablosunda bulunmayan (yeni) gemileri ekler. Var olan gemilerin
-// tarihleri güncellenmez (kasıtlı - bkz. proje notu).
+// okur, MSC'nin gemi programı tablosunu ayrıştırır. Adı `gemiler` tablosunda
+// olmayan gemileri ekler, adı zaten var olan gemilerin tarihlerini (ör. ETA/
+// cut-off revizyonu) günceller. Eşleştirme anahtarı gemi adıdır.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { extractText, getDocumentProxy } from 'npm:unpdf@0.11.0';
 
@@ -141,12 +141,16 @@ Deno.serve(async (_req) => {
 
     const { data: existing, error: exError } = await supabase
       .from('gemiler')
-      .select('ad')
+      .select('id, ad')
       .eq('liman', LIMAN);
     if (exError) throw exError;
 
-    const existingNames = new Set((existing || []).map((r: { ad: string }) => normalizeName(r.ad)));
-    const newShips = parsedShips.filter((s) => !existingNames.has(normalizeName(s.ad)));
+    const existingByName = new Map(
+      (existing || []).map((r: { id: number; ad: string }) => [normalizeName(r.ad), r.id]),
+    );
+
+    const newShips = parsedShips.filter((s) => !existingByName.has(normalizeName(s.ad)));
+    const updatedShips = parsedShips.filter((s) => existingByName.has(normalizeName(s.ad)));
 
     let inserted: string[] = [];
     if (newShips.length > 0) {
@@ -158,12 +162,31 @@ Deno.serve(async (_req) => {
       inserted = (insertedRows || []).map((r: { ad: string }) => r.ad);
     }
 
+    // Var olan gemiler için tarihleri günceller (ör. ETA/cut-off revizyonu).
+    // Gemi adı değişmiyor, sadece tarih alanları güncelleniyor.
+    let updated: string[] = [];
+    for (const s of updatedShips) {
+      const id = existingByName.get(normalizeName(s.ad));
+      const { error: updError } = await supabase
+        .from('gemiler')
+        .update({
+          ilk_giris: s.ilk_giris,
+          cut_off: s.cut_off,
+          vgm: s.vgm,
+          eta: s.eta,
+          etd: s.etd,
+        })
+        .eq('id', id);
+      if (updError) throw updError;
+      updated.push(s.ad);
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
         totalParsed: parsedShips.length,
         inserted,
-        skippedExisting: parsedShips.length - newShips.length,
+        updated,
         parsed: parsedShips,
       }),
       { headers: { 'Content-Type': 'application/json' } },
