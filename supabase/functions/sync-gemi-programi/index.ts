@@ -126,6 +126,45 @@ function parseAntalyaGemiProgrami(rawText: string): ParsedShip[] {
   }));
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  ilk_giris: 'İlk Giriş',
+  cut_off: 'Cut-Off',
+  vgm: 'VGM',
+  eta: 'ETA',
+  etd: 'ETD',
+};
+
+function formatTr(value: string | null | undefined): string {
+  if (!value) return '-';
+  const [datePart, timePart] = value.split('T');
+  const [y, m, d] = datePart.split('-');
+  return timePart ? `${d}.${m}.${y} ${timePart.slice(0, 5)}` : `${d}.${m}.${y}`;
+}
+
+function buildNewShipNote(s: ParsedShip): string {
+  return `🚢 Yeni gemi programa eklendi: ${s.ad} (İlk Giriş: ${formatTr(s.ilk_giris)}, Cut-Off: ${formatTr(s.cut_off)}, VGM: ${formatTr(s.vgm)}, ETA: ${formatTr(s.eta)}, ETD: ${formatTr(s.etd)})`;
+}
+
+type DateFields = {
+  ilk_giris: string | null;
+  cut_off: string | null;
+  vgm: string | null;
+  eta: string | null;
+  etd: string | null;
+};
+
+function buildChangeNote(ad: string, oldRow: DateFields, newRow: DateFields): string | null {
+  const fields: (keyof DateFields)[] = ['ilk_giris', 'cut_off', 'vgm', 'eta', 'etd'];
+  const changes: string[] = [];
+  for (const f of fields) {
+    if ((oldRow[f] || null) !== (newRow[f] || null)) {
+      changes.push(`${FIELD_LABELS[f]}: ${formatTr(oldRow[f])} → ${formatTr(newRow[f])}`);
+    }
+  }
+  if (changes.length === 0) return null;
+  return `🚢 ${ad} programında revizyon: ${changes.join(', ')}`;
+}
+
 Deno.serve(async (_req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -141,16 +180,27 @@ Deno.serve(async (_req) => {
 
     const { data: existing, error: exError } = await supabase
       .from('gemiler')
-      .select('id, ad')
+      .select('id, ad, ilk_giris, cut_off, vgm, eta, etd')
       .eq('liman', LIMAN);
     if (exError) throw exError;
 
+    type ExistingRow = {
+      id: number;
+      ad: string;
+      ilk_giris: string | null;
+      cut_off: string | null;
+      vgm: string | null;
+      eta: string | null;
+      etd: string | null;
+    };
     const existingByName = new Map(
-      (existing || []).map((r: { id: number; ad: string }) => [normalizeName(r.ad), r.id]),
+      (existing || []).map((r: ExistingRow) => [normalizeName(r.ad), r]),
     );
 
     const newShips = parsedShips.filter((s) => !existingByName.has(normalizeName(s.ad)));
-    const updatedShips = parsedShips.filter((s) => existingByName.has(normalizeName(s.ad)));
+    const candidateUpdates = parsedShips.filter((s) => existingByName.has(normalizeName(s.ad)));
+
+    const agendaNotes: string[] = [];
 
     let inserted: string[] = [];
     if (newShips.length > 0) {
@@ -160,13 +210,17 @@ Deno.serve(async (_req) => {
         .select('ad');
       if (insError) throw insError;
       inserted = (insertedRows || []).map((r: { ad: string }) => r.ad);
+      for (const s of newShips) agendaNotes.push(buildNewShipNote(s));
     }
 
-    // Var olan gemiler için tarihleri günceller (ör. ETA/cut-off revizyonu).
-    // Gemi adı değişmiyor, sadece tarih alanları güncelleniyor.
+    // Var olan gemiler için sadece gerçekten bir tarih değiştiyse günceller
+    // ve ajandaya ne değiştiğini yazan bir not düşer.
     let updated: string[] = [];
-    for (const s of updatedShips) {
-      const id = existingByName.get(normalizeName(s.ad));
+    for (const s of candidateUpdates) {
+      const oldRow = existingByName.get(normalizeName(s.ad))!;
+      const note = buildChangeNote(s.ad, oldRow, s);
+      if (!note) continue; // hiçbir şey değişmemiş, dokunma
+
       const { error: updError } = await supabase
         .from('gemiler')
         .update({
@@ -176,9 +230,17 @@ Deno.serve(async (_req) => {
           eta: s.eta,
           etd: s.etd,
         })
-        .eq('id', id);
+        .eq('id', oldRow.id);
       if (updError) throw updError;
       updated.push(s.ad);
+      agendaNotes.push(note);
+    }
+
+    if (agendaNotes.length > 0) {
+      const { error: noteError } = await supabase
+        .from('gorevler')
+        .insert(agendaNotes.map((metin) => ({ metin, tarih: null, tamamlandi_mi: false })));
+      if (noteError) throw noteError;
     }
 
     return new Response(
@@ -187,6 +249,7 @@ Deno.serve(async (_req) => {
         totalParsed: parsedShips.length,
         inserted,
         updated,
+        agendaNotes,
         parsed: parsedShips,
       }),
       { headers: { 'Content-Type': 'application/json' } },
