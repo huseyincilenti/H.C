@@ -22,6 +22,7 @@ const DAYS_AHEAD = 30;
 interface MaerskPortCall {
   vesselName: string;
   vesselMaerskCode: string;
+  vesselIMONumber: string | null;
   marineContainerTerminalGeoCode: string;
   arrivalTime: string | null;
   departureTime: string | null;
@@ -50,6 +51,7 @@ interface ParsedShip {
   vgm: string | null;
   eta: string | null;
   etd: string | null;
+  imo: string | null;
 }
 
 function normalizeName(s: string): string {
@@ -166,12 +168,13 @@ Deno.serve(async (_req) => {
         vgm: toIsoDateTime(findDeadline(deadlines, 'VGM')),
         eta: toIsoDate(p.arrivalTime),
         etd: toIsoDate(p.departureTime),
+        imo: p.vesselIMONumber || null,
       };
     });
 
     const { data: existing, error: exError } = await supabase
       .from('gemiler')
-      .select('id, ad, ilk_giris, cut_off, vgm, eta, etd')
+      .select('id, ad, ilk_giris, cut_off, vgm, eta, etd, imo')
       .eq('liman', LIMAN);
     if (exError) throw exError;
 
@@ -183,6 +186,7 @@ Deno.serve(async (_req) => {
       vgm: string | null;
       eta: string | null;
       etd: string | null;
+      imo: string | null;
     };
     const existingByName = new Map(
       (existing || []).map((r: ExistingRow) => [normalizeName(r.ad), r]),
@@ -208,7 +212,7 @@ Deno.serve(async (_req) => {
     for (const s of candidateUpdates) {
       const oldRow = existingByName.get(normalizeName(s.ad))!;
       const note = buildChangeNote(s.ad, oldRow, s);
-      if (!note) continue;
+      if (!note && (oldRow.imo || null) === (s.imo || null)) continue;
 
       const { error: updError } = await supabase
         .from('gemiler')
@@ -218,11 +222,14 @@ Deno.serve(async (_req) => {
           vgm: s.vgm,
           eta: s.eta,
           etd: s.etd,
+          imo: s.imo,
         })
         .eq('id', oldRow.id);
       if (updError) throw updError;
-      updated.push(s.ad);
-      agendaNotes.push(note);
+      if (note) {
+        updated.push(s.ad);
+        agendaNotes.push(note);
+      }
     }
 
     if (agendaNotes.length > 0) {

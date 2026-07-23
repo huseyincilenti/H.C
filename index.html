@@ -463,8 +463,16 @@
             cut: row.cut_off,
             vgm: row.vgm,
             eta: row.eta,
-            etd: row.etd
+            etd: row.etd,
+            imo: row.imo
         };
+    }
+
+    function vesselTrackUrl(s) {
+        if (s && s.imo) return `https://www.vesselfinder.com/?imo=${encodeURIComponent(s.imo)}`;
+        const ad = (s && s.ad) || '';
+        const nameOnly = ad.trim().split(/\s+/).slice(0, -1).join(' ') || ad;
+        return `https://www.vesselfinder.com/vessels?name=${encodeURIComponent(nameOnly)}`;
     }
 
     function mapGorevFromDb(row) {
@@ -1036,7 +1044,7 @@
 
                 gemiHTML = `
                 <div class="gemi-badge">
-                    <div style="border-bottom: 1px solid #bfdbfe; padding-bottom: 4px;">🚢 <strong>${escapeHtml(d.gemi.ad.toUpperCase())}</strong></div>
+                    <div style="border-bottom: 1px solid #bfdbfe; padding-bottom: 4px;">🚢 <a href="${vesselTrackUrl(d.gemi)}" target="_blank" rel="noopener" title="Haritada canlı konumu gör" style="color:inherit;"><strong>${escapeHtml(d.gemi.ad.toUpperCase())} 🗺️</strong></a></div>
                     <div class="gemi-grid">
                         <div>🟢 İlk Giriş: ${formatDateStr(d.gemi.ilk)}</div>
                         <div class="${cutClass}">⛔ Cut-Off: ${formatDateStr(d.gemi.cut)}</div>
@@ -1156,7 +1164,9 @@
         div.innerHTML = allShips.map(s => `
             <div class="ship-list-item">
                 <div>
-                    <strong style="color:#0f172a; font-size:13px;">🚢 ${escapeHtml(s.ad)}</strong> <span class="term-badge">${escapeHtml(s.liman)}</span><br>
+                    <a href="${vesselTrackUrl(s)}" target="_blank" rel="noopener" title="Haritada canlı konumu gör" style="text-decoration:none; color:#0f172a;">
+                        <strong style="font-size:13px;">🚢 ${escapeHtml(s.ad)} 🗺️</strong>
+                    </a> <span class="term-badge">${escapeHtml(s.liman)}</span><br>
                     <span style="font-size:11px; color:#64748b;">Cut-Off: ${formatDateStr(s.cut)} | ETD: ${formatDateStr(s.etd)} | ETA: ${formatDateStr(s.eta)}</span>
                 </div>
                 <button onclick="deleteShip(${jsVal(s.id)})" aria-label="Sil: ${escapeHtml(s.ad)}" style="background:#ef4444; color:white; border:none; border-radius:6px; padding:5px 10px; cursor:pointer; font-weight:bold; font-size:11px;">Sil</button>
