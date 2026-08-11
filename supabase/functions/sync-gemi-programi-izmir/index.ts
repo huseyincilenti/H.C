@@ -144,7 +144,7 @@ Deno.serve(async (_req) => {
     const newShips = parsedShips.filter((s) => !existingByName.has(normalizeName(s.ad)));
     const candidateUpdates = parsedShips.filter((s) => existingByName.has(normalizeName(s.ad)));
 
-    const agendaNotes: string[] = [];
+    const agendaNotes: { metin: string; gemi_adi: string }[] = [];
 
     let inserted: string[] = [];
     if (newShips.length > 0) {
@@ -154,7 +154,7 @@ Deno.serve(async (_req) => {
         .select('ad');
       if (insError) throw insError;
       inserted = (insertedRows || []).map((r: { ad: string }) => r.ad);
-      for (const s of newShips) agendaNotes.push(buildNewShipNote(s));
+      for (const s of newShips) agendaNotes.push({ metin: buildNewShipNote(s), gemi_adi: s.ad });
     }
 
     let updated: string[] = [];
@@ -175,13 +175,13 @@ Deno.serve(async (_req) => {
         .eq('id', oldRow.id);
       if (updError) throw updError;
       updated.push(s.ad);
-      agendaNotes.push(note);
+      agendaNotes.push({ metin: note, gemi_adi: oldRow.ad });
     }
 
     if (agendaNotes.length > 0) {
       const { error: noteError } = await supabase
         .from('gorevler')
-        .insert(agendaNotes.map((metin) => ({ metin, tarih: null, tamamlandi_mi: false })));
+        .insert(agendaNotes.map(({ metin, gemi_adi }) => ({ metin, gemi_adi, tarih: null, tamamlandi_mi: false })));
       if (noteError) throw noteError;
     }
 
@@ -191,7 +191,7 @@ Deno.serve(async (_req) => {
         totalParsed: parsedShips.length,
         inserted,
         updated,
-        agendaNotes,
+        agendaNotes: agendaNotes.map((a) => a.metin),
         parsed: parsedShips,
       }),
       { headers: { 'Content-Type': 'application/json' } },

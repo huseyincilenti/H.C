@@ -45,6 +45,10 @@
         .todo-item:hover { background: #f1f5f9; border-color: #cbd5e1; }
         .todo-item.done { opacity: 0.6; background: #f1f5f9; }
         .todo-item.done .todo-text { text-decoration: line-through; color: #94a3b8; }
+        .todo-item.ilgili-gemi { background: #fef9c3; border-color: #eab308; }
+        .todo-item.ilgili-gemi:hover { background: #fef08a; }
+        .todo-item.ilgili-gemi .todo-text { color: #713f12; }
+        .todo-ship-badge { font-size: 11px; color: #854d0e; background: #fde68a; padding: 4px 8px; border-radius: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; white-space: nowrap;}
         .todo-text { flex: 1; font-size: 13px; font-weight: 600; color: #334155; word-break: break-word;}
         .todo-date { font-size: 11px; color: #ea580c; background: #ffedd5; padding: 4px 8px; border-radius: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; white-space: nowrap;}
         .todo-item.done .todo-date { background: #e2e8f0; color: #64748b; }
@@ -480,8 +484,23 @@
             id: row.id,
             text: row.metin,
             date: row.tarih,
-            isDone: !!row.tamamlandi_mi
+            isDone: !!row.tamamlandi_mi,
+            gemiAdi: row.gemi_adi || null
         };
+    }
+
+    function normalizeShipName(value) {
+        return String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    }
+
+    function getActiveShipmentShipNames() {
+        const names = new Set();
+        allData.forEach(d => {
+            if (d.asama !== 'Tamamlandı' && d.gemi && d.gemi.ad) {
+                names.add(normalizeShipName(d.gemi.ad));
+            }
+        });
+        return names;
     }
 
     function openOverlay(id) {
@@ -845,16 +864,21 @@
             return new Date(a.date) - new Date(b.date);
         });
 
+        const activeShipNames = getActiveShipmentShipNames();
+
         container.innerHTML = sortedTodos.map(t => {
             let dateHTML = "";
             if (t.date) {
                 let d = new Date(t.date);
                 dateHTML = `<div class="todo-date">⏰ ${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}</div>`;
             }
+            const isOurShip = !t.isDone && t.gemiAdi && activeShipNames.has(normalizeShipName(t.gemiAdi));
+            const shipBadgeHTML = isOurShip ? `<div class="todo-ship-badge" title="Bu gemi aktif bir sevkiyatımızda kullanılıyor">🚢 Bizim Sevkiyat</div>` : "";
             return `
-            <div class="todo-item ${t.isDone ? 'done' : ''}">
+            <div class="todo-item ${t.isDone ? 'done' : ''} ${isOurShip ? 'ilgili-gemi' : ''}">
                 <input type="checkbox" class="todo-checkbox" aria-label="${escapeHtml(t.text)} - tamamlandı olarak işaretle" ${t.isDone ? 'checked' : ''} onchange="toggleTodo(${jsVal(t.id)})">
                 <div class="todo-text">${escapeHtml(t.text)}</div>
+                ${shipBadgeHTML}
                 ${dateHTML}
                 <button class="todo-del" onclick="deleteTodo(${jsVal(t.id)})" aria-label="Sil: ${escapeHtml(t.text)}" title="Sil">✖</button>
             </div>
