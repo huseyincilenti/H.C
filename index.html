@@ -495,14 +495,16 @@
         return String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
     }
 
-    function getActiveShipmentShipNames() {
-        const names = new Set();
+    function getActiveShipmentCustomersByShipName() {
+        const map = new Map();
         allData.forEach(d => {
-            if (d.asama !== 'Tamamlandı' && d.gemi && d.gemi.ad) {
-                names.add(normalizeShipName(d.gemi.ad));
+            if (d.asama !== 'Tamamlandı' && d.gemi && d.gemi.ad && d.musteri) {
+                const key = normalizeShipName(d.gemi.ad);
+                if (!map.has(key)) map.set(key, new Set());
+                map.get(key).add(d.musteri);
             }
         });
-        return names;
+        return map;
     }
 
     function openOverlay(id) {
@@ -883,7 +885,7 @@
             return new Date(a.date) - new Date(b.date);
         });
 
-        const activeShipNames = getActiveShipmentShipNames();
+        const shipCustomers = getActiveShipmentCustomersByShipName();
 
         container.innerHTML = sortedTodos.map(t => {
             let dateHTML = "";
@@ -891,8 +893,10 @@
                 let d = new Date(t.date);
                 dateHTML = `<div class="todo-date">⏰ ${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}</div>`;
             }
-            const isOurShip = !t.isDone && t.gemiAdi && activeShipNames.has(normalizeShipName(t.gemiAdi));
-            const shipBadgeHTML = isOurShip ? `<div class="todo-ship-badge" title="Bu gemi aktif bir sevkiyatımızda kullanılıyor">🚢 Bizim Sevkiyat</div>` : "";
+            const matchedCustomers = (!t.isDone && t.gemiAdi) ? shipCustomers.get(normalizeShipName(t.gemiAdi)) : null;
+            const isOurShip = !!matchedCustomers;
+            const customerLabel = isOurShip ? Array.from(matchedCustomers).join(' / ') : "";
+            const shipBadgeHTML = isOurShip ? `<div class="todo-ship-badge" title="Bu gemi aktif bir sevkiyatımızda kullanılıyor">🚢 ${escapeHtml(customerLabel)} Sevkiyatı</div>` : "";
             return `
             <div class="todo-item ${t.isDone ? 'done' : ''} ${isOurShip ? 'ilgili-gemi' : ''}">
                 <input type="checkbox" class="todo-checkbox" aria-label="${escapeHtml(t.text)} - tamamlandı olarak işaretle" ${t.isDone ? 'checked' : ''} onchange="toggleTodo(${jsVal(t.id)})">
