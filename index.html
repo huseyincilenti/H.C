@@ -115,6 +115,7 @@
 
         .note-badge { font-size: 11px; font-weight: 600; background: #fefce8; color: #a16207; padding: 6px 10px; border-radius: 8px; border: 1px solid #fef08a; display: flex; align-items: flex-start; gap: 6px; cursor: help; word-break: break-word; white-space: normal; line-height: 1.4; width: 100%; box-sizing: border-box; }
         .gemi-badge { font-size: 11px; font-weight: bold; padding: 10px; border-radius: 8px; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+        .gemi-revize-etiketi { font-size: 10px; font-weight: bold; background: #fed7aa; color: #9a3412; padding: 3px 8px; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
         .deadline-danger { color: #dc2626; animation: pulseAlert 1.5s infinite; background: #fef2f2; border-color: #fca5a5; padding: 2px 4px; border-radius: 4px;}
         .gemi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 10px; color: #475569;}
         .price-tag { color: #059669; font-weight: bold; background: #ecfdf5; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 5px; border: 1px solid #a7f3d0; }
@@ -454,6 +455,7 @@
             evraklar: row.evraklar || [],
             hatirlatici: row.hatirlatici || null,
             gemi: row.gemi || null,
+            gemiRevizeBildirimi: !!row.gemi_revize_bildirimi,
             isPinned: !!row.is_pinned
         };
     }
@@ -809,6 +811,8 @@
                 document.getElementById('loading').style.display = 'none';
                 render();
                 renderTodos();
+
+                if (!isSilent) clearSeenShipRevisions();
             }
 
             indicator.innerHTML = `🟢 Güncel (${new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})})`;
@@ -822,6 +826,21 @@
                 document.getElementById('loading').innerHTML = `<span style="color:#ef4444; font-weight:bold;">⚠️ Bağlantı Hatası</span><br>Lokal sürüm açılıyor...`;
                 setTimeout(loadLocalBackup, 2000);
             }
+        }
+    }
+
+    async function clearSeenShipRevisions() {
+        const toClear = allData.filter(d => d.gemiRevizeBildirimi).map(d => d.id);
+        if (toClear.length === 0) return;
+
+        allData.forEach(d => { if (toClear.includes(d.id)) d.gemiRevizeBildirimi = false; });
+        localStorage.setItem('onurMermerData_v6', JSON.stringify(allData));
+
+        try {
+            const { error } = await db.from('sevkiyatlar').update({ gemi_revize_bildirimi: false }).in('id', toClear);
+            if (error) throw error;
+        } catch (e) {
+            console.error('Gemi revize bildirimi temizlenemedi:', e);
         }
     }
 
@@ -1066,9 +1085,14 @@
                 let cutClass = (cutDate && (cutDate - now < 86400000)) ? "deadline-danger" : "";
                 let vgmClass = (vgmDate && (vgmDate - now < 86400000)) ? "deadline-danger" : "";
 
+                const revizeEtiketHTML = d.gemiRevizeBildirimi ? `<span class="gemi-revize-etiketi" title="Gemi programında bir revizyon oldu, bilgiler otomatik güncellendi">🔄 Program Revize Edildi</span>` : "";
+
                 gemiHTML = `
                 <div class="gemi-badge">
-                    <div style="border-bottom: 1px solid #bfdbfe; padding-bottom: 4px;">🚢 <a href="${vesselTrackUrl(d.gemi)}" target="_blank" rel="noopener" title="Haritada canlı konumu gör" style="color:inherit;"><strong>${escapeHtml(d.gemi.ad.toUpperCase())} 🗺️</strong></a></div>
+                    <div style="border-bottom: 1px solid #bfdbfe; padding-bottom: 4px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+                        <a href="${vesselTrackUrl(d.gemi)}" target="_blank" rel="noopener" title="Haritada canlı konumu gör" style="color:inherit;"><strong>🚢 ${escapeHtml(d.gemi.ad.toUpperCase())} 🗺️</strong></a>
+                        ${revizeEtiketHTML}
+                    </div>
                     <div class="gemi-grid">
                         <div>🟢 İlk Giriş: ${formatDateStr(d.gemi.ilk)}</div>
                         <div class="${cutClass}">⛔ Cut-Off: ${formatDateStr(d.gemi.cut)}</div>

@@ -124,7 +124,7 @@ Deno.serve(async (_req) => {
 
     const { data: existing, error: exError } = await supabase
       .from('gemiler')
-      .select('id, ad, ilk_giris, cut_off, vgm, eta, etd')
+      .select('id, ad, ilk_giris, cut_off, vgm, eta, etd, imo')
       .eq('liman', LIMAN);
     if (exError) throw exError;
 
@@ -136,10 +136,45 @@ Deno.serve(async (_req) => {
       vgm: string | null;
       eta: string | null;
       etd: string | null;
+      imo: string | null;
     };
     const existingByName = new Map(
       (existing || []).map((r: ExistingRow) => [normalizeName(r.ad), r]),
     );
+
+    // Bu gemilerden biri aktif (tamamlanmamış) bir sevkiyatta seçili mi diye
+    // kontrol etmek için önceden çekiyoruz; gemi programı revize olunca bu
+    // sevkiyatların donmuş `gemi` kopyasını da otomatik tazeleyeceğiz.
+    const { data: activeShipments, error: shipFetchError } = await supabase
+      .from('sevkiyatlar')
+      .select('id, gemi')
+      .neq('asama', 'Tamamlandı')
+      .not('gemi', 'is', null);
+    if (shipFetchError) throw shipFetchError;
+
+    async function refreshActiveShipments(oldRow: ExistingRow, s: ParsedShip): Promise<void> {
+      const matches = (activeShipments || []).filter(
+        (row: { id: string; gemi: { ad?: string } | null }) =>
+          row.gemi && normalizeName(row.gemi.ad || '') === normalizeName(oldRow.ad),
+      );
+      if (matches.length === 0) return;
+      const freshGemi = {
+        id: oldRow.id,
+        ad: oldRow.ad,
+        liman: LIMAN,
+        ilk: s.ilk_giris,
+        cut: s.cut_off,
+        vgm: s.vgm,
+        eta: s.eta,
+        etd: s.etd,
+        imo: oldRow.imo ?? null,
+      };
+      const { error: shipUpdError } = await supabase
+        .from('sevkiyatlar')
+        .update({ gemi: freshGemi, gemi_revize_bildirimi: true })
+        .in('id', matches.map((r: { id: string }) => r.id));
+      if (shipUpdError) throw shipUpdError;
+    }
 
     const newShips = parsedShips.filter((s) => !existingByName.has(normalizeName(s.ad)));
     const candidateUpdates = parsedShips.filter((s) => existingByName.has(normalizeName(s.ad)));
@@ -176,6 +211,7 @@ Deno.serve(async (_req) => {
       if (updError) throw updError;
       updated.push(s.ad);
       agendaNotes.push({ metin: note, gemi_adi: oldRow.ad });
+      await refreshActiveShipments(oldRow, s);
     }
 
     if (agendaNotes.length > 0) {
