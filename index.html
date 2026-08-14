@@ -738,6 +738,7 @@
         const gemiRows = allShips.map(s => ({
             'Gemi Adı': s.ad || '',
             'Liman': s.liman || '',
+            'Taşıyıcı': s.tasiyici || '',
             'İlk Giriş': s.ilk || '',
             'Cut-Off': s.cut || '',
             'VGM': s.vgm || '',
@@ -839,10 +840,12 @@
 
             const newDataStr = JSON.stringify(newShipments);
             const newTodosStr = JSON.stringify(newTodos);
+            const newShipsStr = JSON.stringify(newShips);
             const oldDataStr = JSON.stringify(allData);
             const oldTodosStr = JSON.stringify(allTodos);
+            const oldShipsStr = JSON.stringify(allShips);
 
-            if (!isSilent || newDataStr !== oldDataStr || newTodosStr !== oldTodosStr) {
+            if (!isSilent || newDataStr !== oldDataStr || newTodosStr !== oldTodosStr || newShipsStr !== oldShipsStr) {
                 allData = newShipments;
                 allShips = newShips;
                 allTodos = newTodos;
@@ -1258,7 +1261,7 @@
                 <div>
                     <a href="${vesselTrackUrl(s)}" target="_blank" rel="noopener" title="Haritada canlı konumu gör" style="text-decoration:none; color:#0f172a;">
                         <strong style="font-size:13px;">🚢 ${escapeHtml(s.ad)} 🗺️</strong>
-                    </a> <span class="term-badge">${escapeHtml(s.liman)}</span><br>
+                    </a> <span class="term-badge">${escapeHtml(s.liman)}</span>${s.tasiyici ? ` <span class="term-badge" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;">${escapeHtml(s.tasiyici)}</span>` : ''}<br>
                     <span style="font-size:11px; color:#64748b;">Cut-Off: ${formatDateStr(s.cut)} | ETD: ${formatDateStr(s.etd)} | ETA: ${formatDateStr(s.eta)}</span>
                 </div>
                 <button onclick="deleteShip(${jsVal(s.id)})" aria-label="Sil: ${escapeHtml(s.ad)}" style="background:#ef4444; color:white; border:none; border-radius:6px; padding:5px 10px; cursor:pointer; font-weight:bold; font-size:11px;">Sil</button>
