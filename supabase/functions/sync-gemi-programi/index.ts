@@ -208,6 +208,16 @@ Deno.serve(async (_req) => {
       .not('gemi', 'is', null);
     if (shipFetchError) throw shipFetchError;
 
+    // Ajandaya not sadece bizim aktif bir sevkiyatımızda kullanılan bir gemi
+    // etkileniyorsa düşülür - limandaki her yeni/revize gemi için değil,
+    // yoksa ajanda alakasız gemilerle boğuluyor.
+    const activeShipNames = new Set(
+      (activeShipments || [])
+        .map((row: { gemi: { ad?: string } | null }) => row.gemi?.ad)
+        .filter((ad: string | undefined): ad is string => !!ad)
+        .map(normalizeName),
+    );
+
     async function refreshActiveShipments(oldRow: ExistingRow, s: ParsedShip): Promise<void> {
       const matches = (activeShipments || []).filter(
         (row: { id: string; gemi: { ad?: string } | null }) =>
@@ -245,7 +255,11 @@ Deno.serve(async (_req) => {
         .select('ad');
       if (insError) throw insError;
       inserted = (insertedRows || []).map((r: { ad: string }) => r.ad);
-      for (const s of newShips) agendaNotes.push({ metin: buildNewShipNote(s), gemi_adi: s.ad });
+      for (const s of newShips) {
+        if (activeShipNames.has(normalizeName(s.ad))) {
+          agendaNotes.push({ metin: buildNewShipNote(s), gemi_adi: s.ad });
+        }
+      }
     }
 
     // Var olan gemiler için sadece gerçekten bir tarih değiştiyse günceller
@@ -268,10 +282,12 @@ Deno.serve(async (_req) => {
         .eq('id', oldRow.id);
       if (updError) throw updError;
       updated.push(s.ad);
-      // gemi_adi burada oldRow.ad'dan alınır çünkü sevkiyatlara bağlanan gemi kaydı
-      // her zaman gemiler tablosundaki mevcut isimle (oldRow.ad) eşleşir, yeni parse
-      // edilen s.ad ile ufak biçim farkları olabilir.
-      agendaNotes.push({ metin: note, gemi_adi: oldRow.ad });
+      if (activeShipNames.has(normalizeName(oldRow.ad))) {
+        // gemi_adi burada oldRow.ad'dan alınır çünkü sevkiyatlara bağlanan gemi kaydı
+        // her zaman gemiler tablosundaki mevcut isimle (oldRow.ad) eşleşir, yeni parse
+        // edilen s.ad ile ufak biçim farkları olabilir.
+        agendaNotes.push({ metin: note, gemi_adi: oldRow.ad });
+      }
       await refreshActiveShipments(oldRow, s);
     }
 
