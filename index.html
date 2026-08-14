@@ -662,9 +662,21 @@
 
         if (liman === 'İzmir') {
             if (tasiyici === 'Maersk') {
-                // Maersk'in kendi takip sayfası booking no'yu URL yolunda kabul ediyor, doğrudan sonuç ekranını açıyor.
-                showTrackToast(`🌍 Maersk takip sayfası açılıyor: ${bn}`);
-                window.open(`https://www.maersk.com/tracking/${encodeURIComponent(bn)}`, '_blank');
+                // Maersk'in takip sayfası booking no'nun formatına bakıp Ocean/Container/Parcel sekmesini
+                // kendi tahmin ediyor - format uymazsa (harf/tire içeren, standart-dışı no) yanlış sekmeye
+                // düşüp "sonuç bulunamadı" gösteriyor. Sadece bilinen temiz formatlarda (9 haneli BL/booking
+                // no, ya da 4 harf + 7 rakam konteyner no) doğrudan linki kullan, aksi halde MSC/CMA CGM'deki
+                // gibi kopyala + genel sayfayı aç deseniyle güvenli tarafta kal.
+                const looksLikeCleanRef = /^[A-Za-z0-9]{9}$/.test(bn) || /^[A-Za-z]{4}\d{7}$/.test(bn);
+                if (looksLikeCleanRef) {
+                    showTrackToast(`🌍 Maersk takip sayfası açılıyor: ${bn}`);
+                    window.open(`https://www.maersk.com/tracking/${encodeURIComponent(bn)}`, '_blank');
+                } else {
+                    navigator.clipboard.writeText(bn).then(() => {
+                        showTrackToast(`🌍 Booking Kopyalandı: ${bn} - Maersk takip sayfası açılıyor...`);
+                        window.open('https://www.maersk.com/tracking', '_blank');
+                    });
+                }
                 return;
             }
             if (tasiyici === 'CMA CGM') {
