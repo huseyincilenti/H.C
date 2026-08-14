@@ -16,6 +16,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const MAERSK_CONSUMER_KEY = Deno.env.get('MAERSK_CONSUMER_KEY')!;
 const LIMAN = 'İzmir';
+const TASIYICI = 'Maersk';
 const PORT_CODE = '3TZA3JGPJXNY7'; // Aliağa (İzmir) - Maersk'in kendi port geo ID'si
 const DAYS_AHEAD = 30;
 
@@ -52,6 +53,7 @@ interface ParsedShip {
   eta: string | null;
   etd: string | null;
   imo: string | null;
+  tasiyici: string;
 }
 
 function normalizeName(s: string): string {
@@ -169,6 +171,7 @@ Deno.serve(async (_req) => {
         eta: toIsoDate(p.arrivalTime),
         etd: toIsoDate(p.departureTime),
         imo: p.vesselIMONumber || null,
+        tasiyici: TASIYICI,
       };
     });
 
@@ -218,6 +221,7 @@ Deno.serve(async (_req) => {
         eta: s.eta,
         etd: s.etd,
         imo: s.imo ?? oldRow.imo ?? null,
+        tasiyici: TASIYICI,
       };
       const { error: shipUpdError } = await supabase
         .from('sevkiyatlar')

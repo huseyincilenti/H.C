@@ -12,6 +12,7 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const BUCKET = 'gemi-pdf';
 const FILE_PATH = 'izmir-gemi-programi.xlsx';
 const LIMAN = 'İzmir';
+const TASIYICI = 'CMA CGM';
 
 interface ParsedShip {
   ad: string;
@@ -21,6 +22,7 @@ interface ParsedShip {
   vgm: string | null;
   eta: string | null;
   etd: string | null;
+  tasiyici: string;
 }
 
 function normalizeName(s: string): string {
@@ -64,6 +66,7 @@ function parseIzmirGemiProgrami(rows: Record<string, unknown>[]): ParsedShip[] {
         vgm: toIsoDateTime(cellToDate(r['VGM Cut-off'])),
         eta: toIsoDate(cellToDate(r['ETA Berth'])),
         etd: toIsoDate(cellToDate(r['ETD'])),
+        tasiyici: TASIYICI,
       };
     });
 }
@@ -168,6 +171,7 @@ Deno.serve(async (_req) => {
         eta: s.eta,
         etd: s.etd,
         imo: oldRow.imo ?? null,
+        tasiyici: TASIYICI,
       };
       const { error: shipUpdError } = await supabase
         .from('sevkiyatlar')

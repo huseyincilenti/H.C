@@ -234,6 +234,7 @@
                         <input type="text" id="s_ad" placeholder="Gemi Adı & Sefer No" required>
                     </div>
                     <div><label for="s_liman" class="visually-hidden">Liman</label><select id="s_liman" required><option value="Antalya">Antalya</option><option value="İzmir">İzmir</option></select></div>
+                    <div><label for="s_tasiyici" style="font-size:10px;">Hat (İzmir için, Takip Et'te kullanılır)</label><select id="s_tasiyici"><option value="">-- Seç --</option><option value="CMA CGM">CMA CGM</option><option value="Maersk">Maersk</option></select></div>
                     <div><label for="s_ilk" style="font-size:10px;">İlk Giriş</label><input type="date" id="s_ilk" required></div>
                     <div><label for="s_cut" style="font-size:10px; color:#dc2626; font-weight:bold;">Cut-Off</label><input type="date" id="s_cut" required></div>
                     <div><label for="s_vgm" style="font-size:10px; color:#dc2626; font-weight:bold;">Son VGM</label><input type="datetime-local" id="s_vgm" required></div>
@@ -471,7 +472,8 @@
             vgm: row.vgm,
             eta: row.eta,
             etd: row.etd,
-            imo: row.imo
+            imo: row.imo,
+            tasiyici: row.tasiyici || null
         };
     }
 
@@ -644,16 +646,41 @@
         });
     }
 
-    function trackBooking(bookingNo) {
+    function showTrackToast(message) {
+        const toast = document.createElement('div');
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        toast.innerText = message;
+        toast.style.cssText = "position:fixed; bottom:20px; right:20px; background:#f59e0b; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:9999; box-shadow:0 4px 6px rgba(0,0,0,0.1); animation: fadein 0.3s;";
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = '0.3s'; setTimeout(()=>toast.remove(), 4000); }, 4000);
+    }
+
+    function trackBooking(bookingNo, liman, tasiyici) {
         if(!bookingNo || String(bookingNo).trim() === "") { alert("Lütfen önce Booking Numarası girin!"); return; }
-        navigator.clipboard.writeText(bookingNo).then(() => {
-            const toast = document.createElement('div');
-            toast.setAttribute('role', 'status');
-            toast.setAttribute('aria-live', 'polite');
-            toast.innerText = `🌍 Booking Kopyalandı: ${bookingNo} - Takip sayfası açılıyor...`;
-            toast.style.cssText = "position:fixed; bottom:20px; right:20px; background:#f59e0b; color:white; padding:12px 24px; border-radius:8px; font-weight:bold; z-index:9999; box-shadow:0 4px 6px rgba(0,0,0,0.1); animation: fadein 0.3s;";
-            document.body.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = '0.3s'; setTimeout(()=>toast.remove(), 4000); }, 4000);
+        const bn = String(bookingNo).trim();
+
+        if (liman === 'İzmir') {
+            if (tasiyici === 'Maersk') {
+                // Maersk'in kendi takip sayfası booking no'yu URL yolunda kabul ediyor, doğrudan sonuç ekranını açıyor.
+                showTrackToast(`🌍 Maersk takip sayfası açılıyor: ${bn}`);
+                window.open(`https://www.maersk.com/tracking/${encodeURIComponent(bn)}`, '_blank');
+                return;
+            }
+            if (tasiyici === 'CMA CGM') {
+                // CMA CGM'in takip sayfası URL parametresini kabul etmiyor, booking no'yu kopyalayıp elle yapıştırmak gerekiyor.
+                navigator.clipboard.writeText(bn).then(() => {
+                    showTrackToast(`🌍 Booking Kopyalandı: ${bn} - CMA CGM takip sayfası açılıyor...`);
+                    window.open('https://www.cma-cgm.com/ebusiness/tracking', '_blank');
+                });
+                return;
+            }
+            alert("Bu sevkiyatın gemisi 'Kayıtlı Gemi Programından Seçin' alanından seçilmediği için hangi hat (CMA CGM / Maersk) olduğu bilinmiyor. Doğru takip sayfasına yönlendirebilmek için lütfen önce gemiyi listeden seçin.");
+            return;
+        }
+
+        navigator.clipboard.writeText(bn).then(() => {
+            showTrackToast(`🌍 Booking Kopyalandı: ${bn} - Takip sayfası açılıyor...`);
             window.open('https://www.msc.com/en/track-a-shipment', '_blank');
         });
     }
@@ -1136,7 +1163,7 @@
             let gridColumns = "1fr";
 
             if (d.bookingNo && String(d.bookingNo).trim() !== "") {
-                takipBtnHTML = `<button type="button" class="btn-track" onclick="trackBooking(${jsStr(d.bookingNo)})">🌍 Takip Et</button>`;
+                takipBtnHTML = `<button type="button" class="btn-track" onclick="trackBooking(${jsStr(d.bookingNo)}, ${jsStr(d.liman)}, ${jsVal(d.gemi ? d.gemi.tasiyici : null)})">🌍 Takip Et</button>`;
                 gridColumns = "1fr 1fr";
             }
 
@@ -1239,7 +1266,8 @@
             vgm: document.getElementById('s_vgm').value,
             eta: document.getElementById('s_eta').value || null,
             etd: document.getElementById('s_etd').value || null,
-            liman: document.getElementById('s_liman').value
+            liman: document.getElementById('s_liman').value,
+            tasiyici: document.getElementById('s_tasiyici').value || null
         };
 
         try {
