@@ -187,7 +187,7 @@
 
 <main>
 <div class="controls">
-    <div class="control-group"><label for="searchBox">🔍 Arama</label><input type="text" id="searchBox" placeholder="Müşteri veya PO No..." oninput="render()"></div>
+    <div class="control-group"><label for="searchBox">🔍 Arama</label><input type="text" id="searchBox" placeholder="Müşteri, PO No, Booking No, Gemi veya Plaka..." oninput="render()"></div>
     <div class="control-group">
         <label for="asamaFilter">📌 Aşama Filtresi</label>
         <select id="asamaFilter" onchange="render()">
@@ -201,6 +201,11 @@
             <option value="Tamamlandı">Tamamlandı</option>
         </select>
     </div>
+</div>
+
+<div class="todo-section" aria-labelledby="cutoffHeading">
+    <h2 id="cutoffHeading" class="todo-header">⏰ Yaklaşan Cut-Off'lar</h2>
+    <div class="todo-list" id="cutoffListContainer"></div>
 </div>
 
 <div class="todo-section" aria-labelledby="todoHeading">
@@ -245,6 +250,8 @@
             </form>
         </div>
         <div style="font-weight: bold; color: #334155; font-size: 12px;">Mevcut Kayıtlı Gemiler</div>
+        <label for="shipListArama" class="visually-hidden">Gemi ara</label>
+        <input type="text" id="shipListArama" placeholder="🔍 Gemi ara..." oninput="renderShipList()" style="margin-top: 5px;">
         <div id="shipListContainer" style="max-height: 250px; overflow-y: auto; margin-top: 5px;"></div>
     </div>
 </div>
@@ -402,8 +409,15 @@
         : null;
 
     let allData = [];
-    let allShips = []; 
-    let allTodos = []; 
+    let allShips = [];
+    let allTodos = [];
+    // "Geri Al" penceresi açık olan (silinmiş gibi gösterilen ama DB'den henüz
+    // gerçekten silinmemiş) kayıtların id'leri - arka plandaki sessiz yenileme
+    // bu id'leri listelerden dışlar, yoksa silinen kayıt geri alma süresi
+    // dolmadan ekrana geri dönebilir.
+    const pendingDeleteShipmentIds = new Set();
+    const pendingDeleteShipIds = new Set();
+    const pendingDeleteTodoIds = new Set();
     let currentContainers = [];
     let currentProducts = []; 
     let currentNotes = []; 
@@ -656,6 +670,43 @@
         setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = '0.3s'; setTimeout(()=>toast.remove(), 4000); }, 4000);
     }
 
+    // Silme işlemleri için: kayıt hemen ekrandan kaldırılır ama gerçek DB
+    // silme işlemi birkaç saniye ertelenir - bu sürede "Geri Al" tıklanırsa
+    // onUndo() çalışır ve DB'ye hiç dokunulmamış olur, süre dolarsa onCommit()
+    // gerçek silmeyi yapar.
+    function showUndoToast(message, onUndo, onCommit) {
+        const toast = document.createElement('div');
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        toast.style.cssText = "position:fixed; bottom:20px; right:20px; background:#1e293b; color:white; padding:12px 16px; border-radius:8px; font-weight:bold; z-index:9999; box-shadow:0 4px 6px rgba(0,0,0,0.1); display:flex; align-items:center; gap:14px; animation: fadein 0.3s;";
+
+        let undone = false;
+
+        const msgSpan = document.createElement('span');
+        msgSpan.innerText = message;
+
+        const undoBtn = document.createElement('button');
+        undoBtn.type = 'button';
+        undoBtn.innerText = 'Geri Al';
+        undoBtn.style.cssText = "background:#0ea5e9; color:white; border:none; padding:6px 14px; border-radius:6px; font-weight:bold; cursor:pointer; white-space:nowrap;";
+        undoBtn.onclick = () => {
+            undone = true;
+            onUndo();
+            toast.style.opacity = '0'; toast.style.transition = '0.3s'; setTimeout(() => toast.remove(), 300);
+        };
+
+        toast.appendChild(msgSpan);
+        toast.appendChild(undoBtn);
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            if (!undone) {
+                onCommit();
+                toast.style.opacity = '0'; toast.style.transition = '0.3s'; setTimeout(() => toast.remove(), 300);
+            }
+        }, 6000);
+    }
+
     function trackBooking(bookingNo, liman, tasiyici) {
         if(!bookingNo || String(bookingNo).trim() === "") { alert("Lütfen önce Booking Numarası girin!"); return; }
         const bn = String(bookingNo).trim();
@@ -834,9 +885,9 @@
             if (gemiRes.error) throw gemiRes.error;
             if (gorevRes.error) throw gorevRes.error;
 
-            const newShipments = (sevkiyatRes.data || []).map(mapSevkiyatFromDb);
-            const newShips = (gemiRes.data || []).map(mapGemiFromDb);
-            const newTodos = (gorevRes.data || []).map(mapGorevFromDb);
+            const newShipments = (sevkiyatRes.data || []).map(mapSevkiyatFromDb).filter(d => !pendingDeleteShipmentIds.has(d.id));
+            const newShips = (gemiRes.data || []).map(mapGemiFromDb).filter(s => !pendingDeleteShipIds.has(s.id));
+            const newTodos = (gorevRes.data || []).map(mapGorevFromDb).filter(t => !pendingDeleteTodoIds.has(t.id));
 
             const newDataStr = JSON.stringify(newShipments);
             const newTodosStr = JSON.stringify(newTodos);
@@ -994,15 +1045,29 @@
     }
 
     async function deleteTodo(id) {
+        const target = allTodos.find(t => t.id === id);
+        if (!target) return;
+
         allTodos = allTodos.filter(t => t.id !== id);
         localStorage.setItem('onurMermerTodos_v6', JSON.stringify(allTodos));
         renderTodos();
-        try {
-            const { error } = await db.from('gorevler').delete().eq('id', id);
-            if (error) throw error;
-        } catch(e) {
-            handleSyncError(e, "Görev silinemedi.");
-        }
+        pendingDeleteTodoIds.add(id);
+
+        showUndoToast('🗑️ Görev silindi.', () => {
+            pendingDeleteTodoIds.delete(id);
+            allTodos.push(target);
+            localStorage.setItem('onurMermerTodos_v6', JSON.stringify(allTodos));
+            renderTodos();
+        }, async () => {
+            try {
+                const { error } = await db.from('gorevler').delete().eq('id', id);
+                if (error) throw error;
+            } catch(e) {
+                handleSyncError(e, "Görev silinemedi.");
+            } finally {
+                pendingDeleteTodoIds.delete(id);
+            }
+        });
     }
 
 
@@ -1028,7 +1093,10 @@
 
         sortedData.forEach(d => {
             if (asama !== 'Tümü' && d.asama !== asama) return;
-            if (search && !(d.musteri||'').toLowerCase().includes(search) && !(d.siparisNo||'').toLowerCase().includes(search)) return;
+            if (search) {
+                const haystack = [d.musteri, d.siparisNo, d.bookingNo, d.plaka, d.gemi && d.gemi.ad].filter(Boolean).join(' ').toLowerCase();
+                if (!haystack.includes(search)) return;
+            }
 
             let dolumStr = d.dolum || "Fabrika Dolum";
             let activeSteps = getStepsForLiman(d.liman || "Antalya", d.teslimat || "FOB", dolumStr);
@@ -1102,6 +1170,17 @@
             }
 
             let plakaGosterimi = d.plaka ? `<div style="font-size:12px; color:#1d4ed8; font-weight:bold; margin-top:5px;">🚛 Araç: ${escapeHtml(d.plaka)}</div>` : '';
+
+            let konteynerHTML = '';
+            let konteynerListesi = (d.konteynerler || []).filter(k => k && k.no && String(k.no).trim() !== '');
+            if (konteynerListesi.length > 0) {
+                konteynerHTML = `<div style="font-size:11px; color:#475569; margin-top:5px;">📦 ${konteynerListesi.map(k => {
+                    let parca = escapeHtml(k.no);
+                    if (k.seal) parca += ` (Mühür: ${escapeHtml(k.seal)})`;
+                    if (k.weight) parca += ` - ${escapeHtml(k.weight)}kg`;
+                    return parca;
+                }).join(' | ')}</div>`;
+            }
             
             let e_count = d.evraklar ? d.evraklar.length : 0;
             let e_total = allEvraklarDef.length;
@@ -1199,6 +1278,7 @@
                             ${noteHTML}
                             <div style="font-size:12px; color:#64748b; margin-top:8px;">PO: ${escapeHtml(d.siparisNo || '-')} | Booking: ${escapeHtml(d.bookingNo || '-')}</div>
                             ${plakaGosterimi}
+                            ${konteynerHTML}
                             ${gemiHTML}
                         </div>
                     </div>
@@ -1243,20 +1323,61 @@
         });
 
         grid.innerHTML = cardsHTML.join('');
+        renderUpcomingCutoffs();
+    }
+
+    function renderUpcomingCutoffs() {
+        const container = document.getElementById('cutoffListContainer');
+        const now = new Date();
+
+        const items = allData
+            .filter(d => d.asama !== 'Tamamlandı' && d.gemi && d.gemi.cut)
+            .map(d => ({ d, cutDate: new Date(d.gemi.cut) }))
+            .filter(x => !isNaN(x.cutDate))
+            .sort((a, b) => a.cutDate - b.cutDate);
+
+        if (items.length === 0) {
+            container.innerHTML = `<span style="color:#94a3b8; font-size:12px; font-style:italic;">Aktif sevkiyatlarda yaklaşan bir cut-off bulunmuyor.</span>`;
+            return;
+        }
+
+        container.innerHTML = items.map(({ d, cutDate }) => {
+            const diffDays = Math.ceil((cutDate - now) / 86400000);
+            let style, label;
+            if (diffDays < 0) { style = 'background:#fef2f2; color:#dc2626; border-color:#fca5a5;'; label = `${Math.abs(diffDays)} gün önce geçti`; }
+            else if (diffDays === 0) { style = 'background:#fef2f2; color:#dc2626; border-color:#fca5a5;'; label = 'Bugün'; }
+            else if (diffDays <= 3) { style = 'background:#fef2f2; color:#dc2626; border-color:#fca5a5;'; label = `${diffDays} gün kaldı`; }
+            else if (diffDays <= 7) { style = 'background:#fffbeb; color:#d97706; border-color:#fde68a;'; label = `${diffDays} gün kaldı`; }
+            else { style = 'background:#f8fafc; color:#64748b; border-color:#e2e8f0;'; label = `${diffDays} gün kaldı`; }
+
+            return `
+            <div class="todo-item" style="cursor:pointer;" onclick="editData(${jsStr(d.id)})">
+                <div class="todo-text">🚢 ${escapeHtml(d.musteri)} — ${escapeHtml(d.gemi.ad)}</div>
+                <div class="todo-date" style="${style}">⛔ ${formatDateStr(d.gemi.cut)} (${label})</div>
+            </div>`;
+        }).join('');
     }
 
     function openShipModal() {
+        document.getElementById('shipListArama').value = '';
         renderShipList();
         openOverlay('shipModalOverlay');
     }
 
     function renderShipList() {
         const div = document.getElementById('shipListContainer');
+        const arama = normalizeShipName(document.getElementById('shipListArama').value);
+        const filtered = allShips.filter(s => !arama || normalizeShipName(s.ad).includes(arama));
+
         if (allShips.length === 0) {
             div.innerHTML = `<div style="padding:10px; color:#64748b; font-size:12px; text-align:center;">Henüz kayıtlı gemi yok.</div>`;
             return;
         }
-        div.innerHTML = allShips.map(s => `
+        if (filtered.length === 0) {
+            div.innerHTML = `<div style="padding:10px; color:#64748b; font-size:12px; text-align:center;">Aramanızla eşleşen gemi bulunamadı.</div>`;
+            return;
+        }
+        div.innerHTML = filtered.map(s => `
             <div class="ship-list-item">
                 <div>
                     <a href="${vesselTrackUrl(s)}" target="_blank" rel="noopener" title="Haritada canlı konumu gör" style="text-decoration:none; color:#0f172a;">
@@ -1302,15 +1423,30 @@
 
     async function deleteShip(id) {
         if(!confirm("Bu gemiyi ana listeden silmek istediğinize emin misiniz? (Mevcut sevkiyatlar etkilenmez)")) return;
+
+        const target = allShips.find(s => s.id === id);
+        if (!target) return;
+
         allShips = allShips.filter(s => s.id !== id);
         renderShipList();
         populateShipDropdown();
-        try {
-            const { error } = await db.from('gemiler').delete().eq('id', id);
-            if (error) throw error;
-        } catch(err) {
-            handleSyncError(err, "Gemi silinemedi.");
-        }
+        pendingDeleteShipIds.add(id);
+
+        showUndoToast(`🗑️ "${target.ad}" silindi.`, () => {
+            pendingDeleteShipIds.delete(id);
+            allShips.push(target);
+            renderShipList();
+            populateShipDropdown();
+        }, async () => {
+            try {
+                const { error } = await db.from('gemiler').delete().eq('id', id);
+                if (error) throw error;
+            } catch(err) {
+                handleSyncError(err, "Gemi silinemedi.");
+            } finally {
+                pendingDeleteShipIds.delete(id);
+            }
+        });
     }
 
     function populateShipDropdown(selectedShipJson) {
@@ -1932,19 +2068,32 @@
     async function deleteData(id) {
         if(!confirm("Bu sevkiyat kaydını tamamen silmek istediğinize emin misiniz?\n(Veritabanından da kalıcı olarak silinir!)")) return;
 
-        const prevData = allData;
+        const target = allData.find(d => d.id === id);
+        if (!target) return;
+
         allData = allData.filter(d => d.id !== id);
         localStorage.setItem('onurMermerData_v6', JSON.stringify(allData));
         render();
-        try {
-            const { error } = await db.from('sevkiyatlar').delete().eq('id', id);
-            if (error) throw error;
-        } catch(error) {
-            allData = prevData;
+        pendingDeleteShipmentIds.add(id);
+
+        showUndoToast(`🗑️ "${target.musteri}" sevkiyatı silindi.`, () => {
+            pendingDeleteShipmentIds.delete(id);
+            allData.unshift(target);
             localStorage.setItem('onurMermerData_v6', JSON.stringify(allData));
             render();
-            handleSyncError(error, "Sevkiyat silinemedi.");
-        }
+        }, async () => {
+            try {
+                const { error } = await db.from('sevkiyatlar').delete().eq('id', id);
+                if (error) throw error;
+            } catch(error) {
+                allData.unshift(target);
+                localStorage.setItem('onurMermerData_v6', JSON.stringify(allData));
+                render();
+                handleSyncError(error, "Sevkiyat silinemedi.");
+            } finally {
+                pendingDeleteShipmentIds.delete(id);
+            }
+        });
     }
 
     async function saveData(e) {
@@ -1966,6 +2115,15 @@
         if (currentId) {
             const exData = allData.find(d => d.id === currentId);
             if (exData && exData.isPinned) existingPin = true;
+        }
+
+        const bookingVal = document.getElementById('f_booking').value.trim();
+        if (bookingVal !== "") {
+            const dup = allData.find(d => d.id !== currentId && (d.bookingNo || '').trim().toLowerCase() === bookingVal.toLowerCase());
+            if (dup && !confirm(`⚠️ "${bookingVal}" booking numarası zaten "${dup.musteri}" sevkiyatında kullanılıyor.\n\nYine de bu şekilde kaydetmek istiyor musunuz?`)) {
+                saveBtn.innerText = "Kaydet"; saveBtn.disabled = false;
+                return;
+            }
         }
 
         const dbPayload = {
