@@ -304,7 +304,8 @@
 
                 <div style="grid-column: span 1; background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #4f46e5; grid-column: 1 / -1;">
                     <label for="f_gemi_secim" style="font-weight: bold; color: #3730a3; display:flex; align-items:center; gap:8px;">🚢 Kayıtlı Gemi Programından Seçin</label>
-                    <select id="f_gemi_secim" style="width: 100%; margin-top: 10px; border-color: #a5b4fc;" onchange="selectShipFromDropdown()"></select>
+                    <input type="text" id="f_gemi_arama" placeholder="🔍 Gemi ara..." oninput="filterShipDropdown()" style="width: 100%; margin-top: 10px; border-color: #a5b4fc;">
+                    <select id="f_gemi_secim" style="width: 100%; margin-top: 8px; border-color: #a5b4fc;" onchange="selectShipFromDropdown()"></select>
                     <div id="shipPreviewContainer" style="margin-top: 10px; display:none;"></div>
                 </div>
 
@@ -1272,19 +1273,27 @@
     function populateShipDropdown(selectedShipJson) {
         const liman = document.getElementById('f_liman').value;
         const select = document.getElementById('f_gemi_secim');
-        
+        const arama = normalizeShipName(document.getElementById('f_gemi_arama').value);
+
         let selectedShipAd = "";
         if (selectedShipJson && String(selectedShipJson).trim() !== "") {
             try { selectedShipAd = JSON.parse(selectedShipJson).ad; } catch(e) {}
         }
 
         const options = ['<option value="">-- Gemi Seçilmedi --</option>'];
-        allShips.filter(s => s.liman === liman).forEach(s => {
-            options.push(`<option value="${escapeHtml(JSON.stringify(s))}" ${s.ad === selectedShipAd ? 'selected' : ''}>${escapeHtml(s.ad)} (Cut-Off: ${formatDateStr(s.cut)})</option>`);
-        });
+        allShips
+            .filter(s => s.liman === liman)
+            .filter(s => !arama || normalizeShipName(s.ad).includes(arama))
+            .forEach(s => {
+                options.push(`<option value="${escapeHtml(JSON.stringify(s))}" ${s.ad === selectedShipAd ? 'selected' : ''}>${escapeHtml(s.ad)} (Cut-Off: ${formatDateStr(s.cut)})</option>`);
+            });
         select.innerHTML = options.join('');
-        
+
         selectShipFromDropdown();
+    }
+
+    function filterShipDropdown() {
+        populateShipDropdown(document.getElementById('f_gemi_gizli').value);
     }
 
     function selectShipFromDropdown() {
@@ -1335,8 +1344,9 @@
 
         const currentChecked = Array.from(document.querySelectorAll('.step-chk:checked')).map(x => x.value);
         const currentEvrak = Array.from(document.querySelectorAll('.evrak-chk:checked')).map(x => x.value);
-        
-        populateShipDropdown(); 
+
+        document.getElementById('f_gemi_arama').value = '';
+        populateShipDropdown();
         buildChecklistUI(currentChecked, liman, teslimat, dolum, currentEvrak);
         
         document.getElementById('f_asama').value = calculateStage(currentChecked, dolum);
@@ -1747,7 +1757,8 @@
         document.getElementById('f_liman').innerHTML = '<option value="Antalya">Antalya</option><option value="İzmir">İzmir</option>';
         document.getElementById('f_liman').value = 'Antalya';
 
-        populateShipDropdown(); 
+        document.getElementById('f_gemi_arama').value = '';
+        populateShipDropdown();
         updateContainerUI();
         updateProductUI();
         updateNoteUI();
@@ -1799,6 +1810,7 @@
             document.getElementById('f_hatirlatici_metin').value = d.hatirlatici.metin || "";
         }
 
+        document.getElementById('f_gemi_arama').value = '';
         populateShipDropdown(d.gemi ? JSON.stringify(d.gemi) : "");
         currentContainers = d.konteynerler ? JSON.parse(JSON.stringify(d.konteynerler)) : [];
         
